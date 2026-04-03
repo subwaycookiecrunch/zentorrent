@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "ZenTorrent",
+  "version": "1.0",
+  "description": "Stream magnet links instantly with ZenTorrent",
+  "permissions": ["tabs"],
+  "host_permissions": ["http://localhost:9999/*"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

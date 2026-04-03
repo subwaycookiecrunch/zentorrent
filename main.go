@@ -1,40 +1,27 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
+	"strings"
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		log.Fatal("usage: zentorrent <torrent-file|magnet>")
+	go StartExtensionServer()
+
+	if len(os.Args) < 2 {
+		fmt.Println(`usage: zt "magnet:?xt=..."`)
+		fmt.Println("background interception server running on port 9999...")
+		select {}
 	}
 
-	app, err := NewApp(os.Args[1])
-	if err != nil {
-		log.Fatalf("setup failed: %v", err)
+	arg := os.Args[1]
+	if arg == "sources" {
+		showSources()
+	} else if strings.HasPrefix(arg, "magnet:") {
+		streamMagnet(arg)
+	} else {
+		fmt.Println(`usage: zt "magnet:?xt=..."`)
+		os.Exit(1)
 	}
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-sigs
-		app.Stop()
-		os.Exit(0)
-	}()
-
-	go func() {
-		var b [1]byte
-		for {
-			if n, _ := os.Stdin.Read(b[:]); n > 0 && (b[0] == 'q' || b[0] == 'Q') {
-				app.Stop()
-				os.Exit(0)
-			}
-		}
-	}()
-
-	app.Run()
 }

@@ -1,0 +1,18 @@
+PackageIdentifier: subwaycookiecrunch.zt
+PackageVersion: 2.0.0
+PackageName: zt
+Publisher: subwaycookiecrunch
+ShortDescription: Lightweight torrent streaming CLI
+License: MIT
+PackageUrl: https://github.com/subwaycookiecrunch/zentorrent
+Installers:
+  - Architecture: x64
+    InstallerType: portable
+    InstallerUrl: https://github.com/subwaycookiecrunch/zentorrent/releases/download/v2.0.0/zt-windows-amd64.exe
+    InstallerSha256: FILL_AFTER_RELEASE
+Tags:
+  - torrent
+  - streaming
+  - cli
+ManifestType: singleton
+ManifestVersion: 1.0.0
