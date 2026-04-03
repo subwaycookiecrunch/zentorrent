@@ -17,7 +17,7 @@ import (
 
 type Result struct {
 	Title, Magnet, Resolution, Source string
-	Seeders, Episode                 int
+	Seeders, Episode                  int
 }
 
 func searchNyaa(q string) ([]Result, error) {
@@ -41,7 +41,7 @@ func searchYTS(q string) ([]Result, error) {
 				Title    string
 				Torrents []struct {
 					Hash, Quality string
-					Seeds        int
+					Seeds         int
 				}
 			}
 		}

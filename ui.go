@@ -33,9 +33,9 @@ func (u *UI) Render(name string, completed, total, speed int64, peers int) {
 			filled = u.width
 		}
 	}
-	
+
 	bar := strings.Repeat("█", filled) + strings.Repeat("░", u.width-filled)
-	
+
 	eta := "∞"
 	if speed > 0 && total > completed {
 		eta = fmtETA((total - completed) / speed)
