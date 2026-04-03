@@ -11,7 +11,7 @@ winget install subwaycookiecrunch.zt
 
 ### macOS (Homebrew)
 ```sh
-brew tap subwaycookiecrunch/zt
+brew tap subwaycookiecrunch/zentorrent https://github.com/subwaycookiecrunch/zentorrent
 brew install zt
 ```
 
