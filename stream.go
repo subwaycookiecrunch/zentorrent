@@ -5,23 +5,56 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/anacrolix/dht/v2"
 	"github.com/anacrolix/torrent"
 )
 
-func streamMagnet(mag string) {
+// StreamState holds the current state of a streaming session
+type StreamState struct {
+	mu           sync.RWMutex
+	Filename     string  `json:"filename"`
+	FileSize     int64   `json:"filesize"`
+	FileSizeFmt  string  `json:"filesize_fmt"`
+	Completed    int64   `json:"completed"`
+	Progress     float64 `json:"progress"`
+	Speed        int64   `json:"speed"`
+	SpeedFmt     string  `json:"speed_fmt"`
+	Peers        int     `json:"peers"`
+	ETA          string  `json:"eta"`
+	Status       string  `json:"status"`
+	Buffered     float64 `json:"buffered"`
+	Resolution   string  `json:"resolution"`
+	SubtitlePath string  `json:"-"`
+}
+
+// Global stream state for TUI access
+var currentStream = &StreamState{}
+
+// streamTorrent is the core streaming function with performance optimizations
+func streamTorrent(uri string) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("> invalid magnet data ignored\n")
+			fmt.Printf("> invalid torrent data ignored\n")
 		}
 	}()
+
+	currentStream.mu.Lock()
+	currentStream.Status = "connecting"
+	currentStream.mu.Unlock()
 
 	cfg := torrent.NewDefaultClientConfig()
 	cfg.Seed = false
 	cfg.ListenPort = 0
+
+	// Performance: connection limiting
+	cfg.EstablishedConnsPerTorrent = appConfig.MaxPeers
+	cfg.HalfOpenConnsPerTorrent = appConfig.MaxPeers / 2
+	cfg.DropMutuallyCompletePeers = true
+
 	cfg.DhtStartingNodes = func(network string) dht.StartingNodesGetter {
 		return func() ([]dht.Addr, error) {
 			return dht.ResolveHostPorts([]string{
@@ -35,24 +68,47 @@ func streamMagnet(mag string) {
 	cfg.DataDir = tmpDir
 	defer os.RemoveAll(tmpDir)
 
-	cl, _ := torrent.NewClient(cfg)
+	cl, err := torrent.NewClient(cfg)
+	if err != nil {
+		fmt.Printf("> error creating client: %v\n", err)
+		return
+	}
 	defer cl.Close()
 
-	for _, tr := range []string{
-		"udp://open.tracker.cl:1337/announce", "udp://tracker.opentrackr.org:1337/announce",
-		"udp://tracker.openbittorrent.com:6969/announce", "udp://opentracker.i2p.rocks:6969/announce",
-		"udp://tracker.torrent.eu.org:451/announce", "udp://open.stealth.si:80/announce", "http://nyaa.tracker.wf:7777/announce",
-	} {
-		mag += "&tr=" + tr
+	// Append extra trackers for better connectivity if it's a magnet
+	if strings.HasPrefix(uri, "magnet:") {
+		for _, tr := range []string{
+			"udp://open.tracker.cl:1337/announce",
+			"udp://tracker.opentrackr.org:1337/announce",
+			"udp://tracker.openbittorrent.com:6969/announce",
+			"udp://opentracker.i2p.rocks:6969/announce",
+			"udp://tracker.torrent.eu.org:451/announce",
+			"udp://open.stealth.si:80/announce",
+			"http://nyaa.tracker.wf:7777/announce",
+		} {
+			uri += "&tr=" + tr
+		}
 	}
-	t, err := cl.AddMagnet(mag)
+
+	var t *torrent.Torrent
+	if strings.HasPrefix(uri, "magnet:") {
+		t, err = cl.AddMagnet(uri)
+	} else {
+		t, err = cl.AddTorrentFromFile(uri)
+	}
+
 	if err != nil {
-		fmt.Printf("> invalid magnet: %v\n", err)
+		fmt.Printf("> invalid torrent: %v\n", err)
 		return
 	}
 
+	currentStream.mu.Lock()
+	currentStream.Status = "metadata"
+	currentStream.mu.Unlock()
+
 	<-t.GotInfo()
 
+	// Find the largest (video) file
 	var vid *torrent.File
 	for _, f := range t.Files() {
 		if vid == nil || f.Length() > vid.Length() {
@@ -63,21 +119,36 @@ func streamMagnet(mag string) {
 		return
 	}
 
-	fmt.Printf("> found: %s (%.1f GB)\n> connecting peers...\n> opening vlc...\n", vid.DisplayPath(), float64(vid.Length())/1024/1024/1024)
+	// Update stream state
+	currentStream.mu.Lock()
+	currentStream.Filename = vid.DisplayPath()
+	currentStream.FileSize = vid.Length()
+	currentStream.FileSizeFmt = formatSizeBytes(vid.Length())
+	currentStream.Resolution = parseRes(vid.DisplayPath())
+	currentStream.Status = "buffering"
+	currentStream.mu.Unlock()
 
+	fmt.Printf("> found: %s (%s)\n", vid.DisplayPath(), formatSizeBytes(vid.Length()))
+	fmt.Printf("> connecting peers...\n")
+
+	// Performance: Smart piece prioritization
 	n := t.NumPieces()
 	for i := 0; i < int(n); i++ {
 		pct := float64(i) / float64(n)
-		if pct < 0.05 {
-			t.Piece(i).SetPriority(torrent.PiecePriorityNow)
-		} else if pct < 0.15 {
-			t.Piece(i).SetPriority(torrent.PiecePriorityHigh)
-		} else {
+		switch {
+		case pct < 0.03:
+			t.Piece(i).SetPriority(torrent.PiecePriorityNow) // First 3%: immediate
+		case pct < 0.10:
+			t.Piece(i).SetPriority(torrent.PiecePriorityHigh) // Next 7%: high
+		case pct < 0.20:
+			t.Piece(i).SetPriority(torrent.PiecePriorityNormal) // Next 10%: normal
+		default:
 			t.Piece(i).SetPriority(torrent.PiecePriorityNormal)
 		}
 	}
 	vid.Download()
 
+	// Start HTTP streaming server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
 		rd := vid.NewReader()
@@ -86,39 +157,379 @@ func streamMagnet(mag string) {
 		http.ServeContent(w, r, vid.DisplayPath(), time.Time{}, rd)
 	})
 
-	srv := &http.Server{Addr: ":8888", Handler: mux}
+	// Subtitle endpoint
+	mux.HandleFunc("/subtitle", func(w http.ResponseWriter, r *http.Request) {
+		currentStream.mu.RLock()
+		subPath := currentStream.SubtitlePath
+		currentStream.mu.RUnlock()
+		if subPath != "" {
+			http.ServeFile(w, r, subPath)
+		} else {
+			http.Error(w, "no subtitle", http.StatusNotFound)
+		}
+	})
+
+	// Status endpoint for external tools
+	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		currentStream.mu.RLock()
+		json.NewEncoder(w).Encode(currentStream)
+		currentStream.mu.RUnlock()
+	})
+
+	streamAddr := fmt.Sprintf(":%d", appConfig.StreamPort)
+	srv := &http.Server{Addr: streamAddr, Handler: mux}
 	go srv.ListenAndServe()
 	defer srv.Close()
 
-	bin := "vlc"
-	if _, err := exec.LookPath(bin); err != nil {
-		bin = `C:\Program Files\VideoLAN\VLC\vlc.exe`
+	streamURL := fmt.Sprintf("http://localhost:%d/stream", appConfig.StreamPort)
+
+	// Auto-fetch subtitles in background
+	go func() {
+		subPath := AutoFetchSubtitle(vid.DisplayPath())
+		if subPath != "" {
+			currentStream.mu.Lock()
+			currentStream.SubtitlePath = subPath
+			currentStream.mu.Unlock()
+		}
+	}()
+
+	// Add to history
+	AddHistory(HistoryEntry{
+		Title:      vid.DisplayPath(),
+		Magnet:     uri,
+		Resolution: currentStream.Resolution,
+		FileSize:   currentStream.FileSizeFmt,
+	})
+
+	currentStream.mu.Lock()
+	currentStream.Status = "streaming"
+	currentStream.mu.Unlock()
+
+	// Live stats update loop
+	go updateStats(t, vid)
+
+	// Always launch native player (mpv > vlc)
+	fmt.Printf("> opening player (%s)...\n", DetectPlayer())
+	playerCmd, err := LaunchPlayer(streamURL, "")
+	if err != nil {
+		fmt.Printf("> error starting player: %v\n", err)
+		fmt.Printf("> stream available at: %s\n", streamURL)
+		Notify("ZenTorrent", "Player failed — stream at "+streamURL)
+		select {} // Keep stream alive
+	} else {
+		Notify("ZenTorrent", "Now streaming: "+vid.DisplayPath())
 	}
-	cmd := exec.Command(bin, "http://localhost:8888/stream",
-		"--network-caching=30000", "--file-caching=1000",
-		"--disc-caching=1000", "--live-caching=1000", "--prefetch-buffer-size=131072")
-	if err := cmd.Start(); err != nil {
-		fmt.Printf("> error starting vlc: %v\n", err)
-		return
+
+	// Wait for player to exit
+	if playerCmd != nil {
+		playerCmd.Wait()
+	} else {
+		select {}
 	}
-	cmd.Wait()
+
+	currentStream.mu.Lock()
+	currentStream.Status = "stopped"
+	currentStream.mu.Unlock()
 }
 
+// downloadTorrent downloads a torrent entirely to the configured DownloadDir
+func downloadTorrent(uri string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("> invalid torrent data ignored\n")
+		}
+	}()
+
+	currentStream.mu.Lock()
+	currentStream.Status = "connecting"
+	currentStream.mu.Unlock()
+
+	cfg := torrent.NewDefaultClientConfig()
+	cfg.Seed = false
+	cfg.ListenPort = 0
+
+	cfg.EstablishedConnsPerTorrent = appConfig.MaxPeers
+	cfg.HalfOpenConnsPerTorrent = appConfig.MaxPeers / 2
+	cfg.DropMutuallyCompletePeers = true
+
+	cfg.DhtStartingNodes = func(network string) dht.StartingNodesGetter {
+		return func() ([]dht.Addr, error) {
+			return dht.ResolveHostPorts([]string{
+				"router.bittorrent.com:6881", "router.utorrent.com:6881",
+				"dht.transmissionbt.com:6881", "dht.aelitis.com:6881",
+			})
+		}
+	}
+
+	os.MkdirAll(appConfig.DownloadDir, 0755)
+	cfg.DataDir = appConfig.DownloadDir
+
+	cl, err := torrent.NewClient(cfg)
+	if err != nil {
+		fmt.Printf("> error creating client: %v\n", err)
+		return
+	}
+	defer cl.Close()
+
+	if strings.HasPrefix(uri, "magnet:") {
+		for _, tr := range []string{
+			"udp://open.tracker.cl:1337/announce",
+			"udp://tracker.opentrackr.org:1337/announce",
+			"udp://tracker.openbittorrent.com:6969/announce",
+			"udp://opentracker.i2p.rocks:6969/announce",
+			"udp://tracker.torrent.eu.org:451/announce",
+			"udp://open.stealth.si:80/announce",
+			"http://nyaa.tracker.wf:7777/announce",
+		} {
+			uri += "&tr=" + tr
+		}
+	}
+
+	var t *torrent.Torrent
+	if strings.HasPrefix(uri, "magnet:") {
+		t, err = cl.AddMagnet(uri)
+	} else {
+		t, err = cl.AddTorrentFromFile(uri)
+	}
+
+	if err != nil {
+		fmt.Printf("> invalid torrent: %v\n", err)
+		return
+	}
+
+	currentStream.mu.Lock()
+	currentStream.Status = "metadata"
+	currentStream.mu.Unlock()
+
+	<-t.GotInfo()
+	t.DownloadAll()
+
+	totalSize := t.Info().TotalLength()
+
+	currentStream.mu.Lock()
+	currentStream.Filename = t.Name()
+	currentStream.FileSize = totalSize
+	currentStream.FileSizeFmt = formatSizeBytes(totalSize)
+	currentStream.Resolution = parseRes(t.Name())
+	currentStream.Status = "downloading"
+	currentStream.mu.Unlock()
+
+	updateStatsDownload(t, totalSize)
+
+	currentStream.mu.Lock()
+	currentStream.Status = "stopped"
+	currentStream.mu.Unlock()
+}
+
+// updateStatsDownload is similar to updateStats but handles total torrent progress
+func updateStatsDownload(t *torrent.Torrent, total int64) {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	var prevCompleted int64
+
+	for range ticker.C {
+		completed := t.BytesCompleted()
+		speed := (completed - prevCompleted) * 2 // *2 because tick is 500ms
+		if speed < 0 {
+			speed = 0
+		}
+		prevCompleted = completed
+
+		progress := 0.0
+		if total > 0 {
+			progress = float64(completed) / float64(total) * 100
+		}
+
+		eta := "∞"
+		if speed > 0 && total > completed {
+			secs := (total - completed) / speed
+			eta = fmtETAv2(secs)
+		}
+
+		status := "downloading"
+		if progress >= 100 {
+			status = "complete"
+		}
+
+		currentStream.mu.Lock()
+		currentStream.Completed = completed
+		currentStream.Progress = progress
+		currentStream.Speed = speed
+		currentStream.SpeedFmt = fmtSpeed(speed)
+		currentStream.Peers = len(t.PeerConns())
+		currentStream.ETA = eta
+		currentStream.Status = status
+		currentStream.mu.Unlock()
+
+		if progress >= 100 {
+			Notify("ZenTorrent", "Download complete: "+currentStream.Filename)
+			break
+		}
+	}
+}
+
+// updateStats continuously updates the global stream state
+func updateStats(t *torrent.Torrent, vid *torrent.File) {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	var prevCompleted int64
+
+	for range ticker.C {
+		completed := t.BytesCompleted()
+		total := vid.Length()
+		speed := (completed - prevCompleted) * 2 // *2 because tick is 500ms
+		if speed < 0 {
+			speed = 0
+		}
+		prevCompleted = completed
+
+		progress := 0.0
+		if total > 0 {
+			progress = float64(completed) / float64(total) * 100
+		}
+
+		eta := "∞"
+		if speed > 0 && total > completed {
+			secs := (total - completed) / speed
+			eta = fmtETAv2(secs)
+		}
+
+		// Calculate buffer percentage (first 5% of file)
+		bufferPieces := t.NumPieces() / 20
+		if bufferPieces < 1 {
+			bufferPieces = 1
+		}
+		bufferedCount := 0
+		for i := 0; i < int(bufferPieces); i++ {
+			if t.Piece(i).State().Complete {
+				bufferedCount++
+			}
+		}
+		buffered := float64(bufferedCount) / float64(bufferPieces) * 100
+
+		status := "streaming"
+		if progress >= 100 {
+			status = "complete"
+		} else if buffered < 50 {
+			status = "buffering"
+		}
+
+		currentStream.mu.Lock()
+		currentStream.Completed = completed
+		currentStream.Progress = progress
+		currentStream.Speed = speed
+		currentStream.SpeedFmt = fmtSpeed(speed)
+		currentStream.Peers = len(t.PeerConns())
+		currentStream.ETA = eta
+		currentStream.Buffered = buffered
+		currentStream.Status = status
+		currentStream.mu.Unlock()
+
+		// Dynamic re-prioritization based on download progress
+		reprioritize(t, completed, total)
+
+		if progress >= 100 {
+			Notify("ZenTorrent", "Download complete: "+currentStream.Filename)
+			break
+		}
+	}
+}
+
+// reprioritize adjusts piece priorities based on current download position
+func reprioritize(t *torrent.Torrent, completed, total int64) {
+	if total == 0 {
+		return
+	}
+
+	n := t.NumPieces()
+	playbackPiece := int(float64(completed) / float64(total) * float64(n))
+
+	for i := 0; i < int(n); i++ {
+		if t.Piece(i).State().Complete {
+			continue // Skip completed pieces
+		}
+
+		dist := i - playbackPiece
+		switch {
+		case dist < 0:
+			// Already past playback — lowest priority
+			t.Piece(i).SetPriority(torrent.PiecePriorityNone)
+		case dist < 10:
+			t.Piece(i).SetPriority(torrent.PiecePriorityNow)
+		case dist < 50:
+			t.Piece(i).SetPriority(torrent.PiecePriorityHigh)
+		default:
+			t.Piece(i).SetPriority(torrent.PiecePriorityNormal)
+		}
+	}
+}
+
+// StartExtensionServer runs the Chrome extension magnet interceptor
 func StartExtensionServer() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		var req struct{ Magnet string }
-		json.NewDecoder(r.Body).Decode(&req)
-		if req.Magnet != "" {
-			go streamMagnet(req.Magnet)
-		}
-	})
-	go http.ListenAndServe(":9999", mux)
+
+	// Legacy endpoint (v1 compat)
+	mux.HandleFunc("/stream", handleExtensionRequest)
+	// New v2 endpoint
+	mux.HandleFunc("/api/magnet", handleExtensionRequest)
+
+	addr := fmt.Sprintf(":%d", appConfig.ExtPort)
+	go http.ListenAndServe(addr, mux)
+}
+
+func handleExtensionRequest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	var req struct{ Magnet string }
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.Magnet != "" {
+		go streamTorrent(req.Magnet)
+	}
+}
+
+func formatSizeBytes(b int64) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+	switch {
+	case b >= GB:
+		return fmt.Sprintf("%.1f GB", float64(b)/float64(GB))
+	case b >= MB:
+		return fmt.Sprintf("%.1f MB", float64(b)/float64(MB))
+	case b >= KB:
+		return fmt.Sprintf("%.1f KB", float64(b)/float64(KB))
+	default:
+		return fmt.Sprintf("%d B", b)
+	}
+}
+
+func fmtETAv2(s int64) string {
+	if s < 60 {
+		return fmt.Sprintf("%ds", s)
+	}
+	if s < 3600 {
+		return fmt.Sprintf("%dm %ds", s/60, s%60)
+	}
+	return fmt.Sprintf("%dh %dm", s/3600, (s%3600)/60)
+}
+
+func fmtSpeed(b int64) string {
+	if b < 1024 {
+		return fmt.Sprintf("%d B/s", b)
+	}
+	if b < 1024*1024 {
+		return fmt.Sprintf("%.1f KB/s", float64(b)/1024)
+	}
+	return fmt.Sprintf("%.2f MB/s", float64(b)/(1024*1024))
 }

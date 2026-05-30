@@ -2,3 +2,6 @@
 *.iso
 *.torrent
 .torrent.bolt.db
+zentorrent
+zentorrent.exe
+dist/
