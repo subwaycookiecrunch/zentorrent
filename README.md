@@ -1,51 +1,46 @@
 # zentorrent
 
-a fast, minimal CLI torrent streaming client. Instantly streams torrents and magnet links to VLC. Also includes a Chrome extension for capturing magnet links directly from your browser. 
+a blazing fast, minimalist terminal torrent client and streamer. 
 
-## Installation
+zentorrent drops bloated web UIs and heavy electron apps in favor of a gorgeous, keyboard-driven terminal interface. paste a magnet link or `.torrent` file, and it aggressively prioritizes piece metadata to instantly stream video to your native player (VLC or MPV) without waiting for the download to finish. 
 
-### Windows (Winget)
-```powershell
-winget install subwaycookiecrunch.zt
+or just use it as a standard client and download straight to disk.
+
+## features
+- **instant streaming**: prioritizes the first 5% of video chunks to launch VLC/MPV immediately.
+- **download mode**: download entire torrents to disk with a clean animated progress dashboard.
+- **interactive search**: query popular trackers directly from your terminal.
+- **bookmarks & history**: save things for later or pick up where you left off.
+- **keyboard-driven**: built with charmbracelet's bubbletea for a buttery smooth TUI.
+- **subtitles**: auto-fetches subtitles in the background.
+
+## installation
+
+### the easiest way (mac & linux)
+```bash
+curl -sSL https://raw.githubusercontent.com/subwaycookiecrunch/zentorrent/main/install.sh | bash
 ```
 
-### macOS (Homebrew)
-```sh
-brew tap subwaycookiecrunch/zentorrent https://github.com/subwaycookiecrunch/zentorrent
-brew install zt
+### windows & pre-compiled binaries
+grab the latest `.exe` (windows) or binary (mac/linux) from the [Releases page](https://github.com/subwaycookiecrunch/zentorrent/releases). put it somewhere in your `PATH` and you're good to go.
+
+### build from source
+if you have Go installed, this will compile and place the binary in your `GOPATH`:
+```bash
+go install github.com/subwaycookiecrunch/zentorrent@latest
 ```
 
-### Linux / Binaries
-Grab the latest pre-compiled binary from the [Releases page](https://github.com/subwaycookiecrunch/zentorrent/releases).
+## usage
 
-### Build from source
-```sh
-git clone https://github.com/subwaycookiecrunch/zentorrent
-cd zentorrent
-go build -o zt .
-```
+just type `zentorrent` in your terminal to launch the interactive menu.
 
-## Usage
+from there you can:
+- **Search** to find something to watch
+- **Stream** to paste a magnet link or `/path/to/file.torrent`
+- **Download** to save files directly to your machine
+- **Config** to configure your preferred player, subtitles, and download directories
 
-**1. Stream directly**
-```sh
-zt "magnet:?xt=urn:btih:..."
-```
-
-**2. Interactive Source Browser**
-Browse and search popular trackers (Nyaa, YTS, 1337x, etc.) directly in the terminal:
-```sh
-zt sources
-```
-
-**3. Background Extension mode**
-Start the background server:
-```sh
-zt
-```
-Then, install the Chrome Extension located in the `zt-extension/` directory via `chrome://extensions` using the "Load Unpacked" feature. Clicking on any magnet link in your browser will automatically send it to the `zt` server and launch VLC.
-
-## How it works under the hood
-- Downloads piece metadata and aggressively prioritizes the first 5% of the file chunks to enable instant stream playback.
-- Binds a localhost HTTP server to serve the actively buffering piece stream.
-- Hooks directly into your local VLC installation without buffering the entire file to disk first.
+## under the hood
+- runs a local HTTP server that serves the actively buffering piece stream.
+- binds directly to `anacrolix/torrent` for lightning-fast peer discovery and DHT routing.
+- reprioritizes torrent pieces dynamically based on playback position so the stream never stutters.

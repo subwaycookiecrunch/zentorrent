@@ -102,7 +102,7 @@ func (m streamModel) View() string {
 
 	var b strings.Builder
 
-	// ── Header ──
+
 	headerStyle := lipgloss.NewStyle().Foreground(colorPurple).Bold(true)
 	if m.isDownload {
 		b.WriteString(headerStyle.Render("  ⬇️  ZenTorrent Download"))
@@ -111,7 +111,7 @@ func (m streamModel) View() string {
 	}
 	b.WriteString("\n\n")
 
-	// ── File Info ──
+
 	titleStyle := lipgloss.NewStyle().Foreground(colorTextPri).Bold(true)
 	resBadge := lipgloss.NewStyle().
 		Foreground(colorCyan).
@@ -125,7 +125,7 @@ func (m streamModel) View() string {
 	b.WriteString(sizeInfo)
 	b.WriteString("\n\n")
 
-	// ── Progress Bar ──
+
 	barWidth := 50
 	if m.width > 20 {
 		barWidth = m.width - 20
@@ -169,7 +169,7 @@ func (m streamModel) View() string {
 	pctStyle := lipgloss.NewStyle().Foreground(colorTextPri).Bold(true)
 	b.WriteString(fmt.Sprintf("  %s %s\n\n", bar, pctStyle.Render(fmt.Sprintf("%5.1f%%", progress))))
 
-	// ── Status Badge ──
+
 	var statusBadge string
 	switch status {
 	case "connecting":
@@ -190,7 +190,7 @@ func (m streamModel) View() string {
 	}
 	b.WriteString(fmt.Sprintf("  %s\n\n", statusBadge))
 
-	// ── Stats Grid ──
+
 	labelStyle := lipgloss.NewStyle().Foreground(colorTextDim)
 	valStyle := lipgloss.NewStyle().Foreground(colorTextPri)
 
@@ -247,7 +247,7 @@ func (m streamModel) View() string {
 			))
 		}
 
-		// ── Footer ──
+
 		if m.isDownload {
 			b.WriteString(footerStyle.Render("  press q to stop downloading"))
 		} else {

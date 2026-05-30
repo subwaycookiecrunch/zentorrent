@@ -69,7 +69,7 @@ func bookmarksPath() string {
 	return configDir() + "/bookmarks.json"
 }
 
-// ── Interactive Bookmarks TUI ──
+
 
 type bookmarksModel struct {
 	table    table.Model

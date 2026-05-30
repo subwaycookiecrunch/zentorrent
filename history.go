@@ -150,7 +150,7 @@ func PrintHistory() {
 	}
 }
 
-// ── Interactive History TUI ──
+
 
 type historyModel struct {
 	table    table.Model
