@@ -13,7 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// BookmarkEntry represents a saved torrent
+
 type BookmarkEntry struct {
 	Title      string    `json:"title"`
 	Magnet     string    `json:"magnet"`
@@ -23,7 +23,7 @@ type BookmarkEntry struct {
 	AddedAt    time.Time `json:"added_at"`
 }
 
-// AddBookmark saves a torrent to bookmarks, deduplicating by magnet hash
+
 func AddBookmark(entry BookmarkEntry) {
 	entries := loadBookmarks()
 	entry.AddedAt = time.Now()
@@ -79,7 +79,7 @@ type bookmarksModel struct {
 	selected *BookmarkEntry
 }
 
-// StartBookmarksTUI launches the interactive bookmarks viewer
+
 func StartBookmarksTUI() {
 	entries := loadBookmarks()
 

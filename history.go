@@ -13,7 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// HistoryEntry represents a single stream event
+
 type HistoryEntry struct {
 	Title      string    `json:"title"`
 	Magnet     string    `json:"magnet"`
@@ -25,7 +25,7 @@ type HistoryEntry struct {
 
 const maxHistoryEntries = 100
 
-// AddHistory appends a new entry to the history file, deduplicating by magnet hash
+
 func AddHistory(entry HistoryEntry) {
 	entries := loadHistory()
 	entry.Timestamp = time.Now()
@@ -75,7 +75,7 @@ func extractHistBTIH(magnet string) string {
 	return ""
 }
 
-// GetHistory returns the last N history entries (newest first)
+
 func GetHistory(limit int) []HistoryEntry {
 	entries := loadHistory()
 
@@ -90,7 +90,7 @@ func GetHistory(limit int) []HistoryEntry {
 	return entries
 }
 
-// ClearHistory wipes all history
+
 func ClearHistory() error {
 	return os.Remove(historyPath())
 }
@@ -105,7 +105,7 @@ func loadHistory() []HistoryEntry {
 	return entries
 }
 
-// PrintHistory displays history in a styled table (non-interactive fallback)
+
 func PrintHistory() {
 	entries := GetHistory(20)
 
@@ -159,7 +159,7 @@ type historyModel struct {
 	selected *HistoryEntry
 }
 
-// StartHistoryTUI launches the interactive history viewer
+
 func StartHistoryTUI() {
 	entries := GetHistory(50)
 

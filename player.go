@@ -7,7 +7,7 @@ import (
 	"runtime"
 )
 
-// PlayerType represents the video player to use
+
 type PlayerType string
 
 const (
@@ -16,7 +16,7 @@ const (
 	PlayerAuto PlayerType = "auto"
 )
 
-// DetectPlayer finds the best available player
+
 func DetectPlayer() PlayerType {
 	pref := appConfig.Player
 	if pref != "" && pref != "auto" {
@@ -42,7 +42,7 @@ func DetectPlayer() PlayerType {
 	return PlayerVLC
 }
 
-// vlcPaths returns platform-specific VLC installation paths
+
 func vlcPaths() []string {
 	switch runtime.GOOS {
 	case "darwin":
@@ -57,7 +57,7 @@ func vlcPaths() []string {
 	}
 }
 
-// LaunchPlayer starts the appropriate media player pointing at the streaming URL
+
 func LaunchPlayer(streamURL string, subtitlePath string) (*exec.Cmd, error) {
 	player := DetectPlayer()
 

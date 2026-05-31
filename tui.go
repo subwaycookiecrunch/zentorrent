@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// menuAction represents what the user selected from the main menu
 type menuAction int
 
 const (
@@ -124,7 +123,6 @@ func newMenuModel() menuModel {
 	}
 }
 
-// StartMainMenu launches the interactive main menu TUI
 func StartMainMenu() {
 	m := newMenuModel()
 	p := tea.NewProgram(m)
@@ -169,7 +167,6 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		key := msg.String()
 
-		// Handle input modes first
 		if m.inputMode != "" {
 			switch key {
 			case "esc":

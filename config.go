@@ -8,7 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Config holds all application settings loaded from ~/.config/zentorrent/config.toml
+
 type Config struct {
 	Player        string    `toml:"player"`         // "mpv", "vlc", or "auto"
 	StreamPort    int       `toml:"stream_port"`    // port for video streaming (default 8888)
@@ -20,14 +20,14 @@ type Config struct {
 	Subtitles     SubConfig `toml:"subtitles"`
 }
 
-// SubConfig holds subtitle-related settings
+
 type SubConfig struct {
 	Language  string `toml:"language"`   // ISO 639-1 language code
 	APIKey    string `toml:"api_key"`    // OpenSubtitles API key
 	AutoFetch bool   `toml:"auto_fetch"` // automatically search for subtitles
 }
 
-// DefaultConfig returns configuration with sane defaults
+
 func DefaultConfig() Config {
 	return Config{
 		Player:        "auto",
@@ -44,23 +44,23 @@ func DefaultConfig() Config {
 	}
 }
 
-// configDir returns the config directory path
+
 func configDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "zentorrent")
 }
 
-// configPath returns the config file path
+
 func configPath() string {
 	return filepath.Join(configDir(), "config.toml")
 }
 
-// historyPath returns the history file path
+
 func historyPath() string {
 	return filepath.Join(configDir(), "history.json")
 }
 
-// LoadConfig reads config from disk, returning defaults if file doesn't exist
+
 func LoadConfig() Config {
 	conf := DefaultConfig()
 
@@ -79,7 +79,7 @@ func LoadConfig() Config {
 	return conf
 }
 
-// SaveConfig writes the config to disk
+
 func SaveConfig(conf Config) error {
 	dir := configDir()
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -101,7 +101,7 @@ func SaveConfig(conf Config) error {
 	return encoder.Encode(conf)
 }
 
-// PrintConfig displays the current config with styled output
+
 func PrintConfig(conf Config) {
 	fmt.Println("┌─────────────────────────────────────┐")
 	fmt.Println("│  ⚙  ZenTorrent Configuration        │")

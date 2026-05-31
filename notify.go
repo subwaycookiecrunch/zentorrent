@@ -6,7 +6,7 @@ import (
 	"runtime"
 )
 
-// Notify sends a desktop notification using OS-native mechanisms
+
 func Notify(title, message string) {
 	if !appConfig.Notifications {
 		return

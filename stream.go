@@ -13,7 +13,7 @@ import (
 	"github.com/anacrolix/torrent"
 )
 
-// StreamState holds the current state of a streaming session
+
 type StreamState struct {
 	mu           sync.RWMutex
 	Filename     string  `json:"filename"`
@@ -31,10 +31,8 @@ type StreamState struct {
 	SubtitlePath string  `json:"-"`
 }
 
-// Global stream state for TUI access
 var currentStream = &StreamState{}
 
-// streamTorrent is the core streaming function with performance optimizations
 func streamTorrent(uri string) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -234,7 +232,6 @@ func streamTorrent(uri string) {
 	currentStream.mu.Unlock()
 }
 
-// downloadTorrent downloads a torrent entirely to the configured DownloadDir
 func downloadTorrent(uri string) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -323,7 +320,6 @@ func downloadTorrent(uri string) {
 	currentStream.mu.Unlock()
 }
 
-// updateStatsDownload is similar to updateStats but handles total torrent progress
 func updateStatsDownload(t *torrent.Torrent, total int64) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
@@ -371,7 +367,6 @@ func updateStatsDownload(t *torrent.Torrent, total int64) {
 	}
 }
 
-// updateStats continuously updates the global stream state
 func updateStats(t *torrent.Torrent, vid *torrent.File) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
@@ -439,7 +434,6 @@ func updateStats(t *torrent.Torrent, vid *torrent.File) {
 	}
 }
 
-// reprioritize adjusts piece priorities based on current download position
 func reprioritize(t *torrent.Torrent, completed, total int64) {
 	if total == 0 {
 		return
@@ -468,7 +462,6 @@ func reprioritize(t *torrent.Torrent, completed, total int64) {
 	}
 }
 
-// StartExtensionServer runs the Chrome extension magnet interceptor
 func StartExtensionServer() {
 	mux := http.NewServeMux()
 
