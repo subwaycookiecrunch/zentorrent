@@ -1,4 +1,4 @@
-module zt
+module github.com/subwaycookiecrunch/zentorrent
 
 go 1.26.1
 
