@@ -21,8 +21,7 @@ else
     exit 1
 fi
 
-# We assume you will replace YOUR_GITHUB_USERNAME with your actual GitHub name.
-REPO="YOUR_GITHUB_USERNAME/zentorrent"
+REPO="subwaycookiecrunch/zentorrent"
 
 echo "Downloading latest release for $OS ($ARCH)..."
 # Fetch latest release URL from GitHub API
