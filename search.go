@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -21,6 +21,23 @@ type Result struct {
 	Title, Magnet, Resolution, Source string
 	Seeders, Episode                  int
 }
+
+type sourceFunc struct {
+	name string
+	fn   func(ctx context.Context, q string) ([]Result, error)
+}
+
+var allSources = []sourceFunc{
+	{"yts", func(ctx context.Context, q string) ([]Result, error) { return searchYTSCtx(ctx, q) }},
+	{"yts-official", func(ctx context.Context, q string) ([]Result, error) { return searchYTSOfficialCtx(ctx, q) }},
+	{"tpb", func(ctx context.Context, q string) ([]Result, error) { return searchTPB(ctx, q) }},
+	{"eztv", func(ctx context.Context, q string) ([]Result, error) { return searchEZTV(ctx, q) }},
+	{"1337x", func(ctx context.Context, q string) ([]Result, error) { return search1337xCtx(ctx, q) }},
+	{"nyaa", func(ctx context.Context, q string) ([]Result, error) { return searchNyaaRSS(ctx, q) }},
+	{"subsplease", func(ctx context.Context, q string) ([]Result, error) { return searchSubsPlease(ctx, q) }},
+}
+
+const sourceTimeout = 6 * time.Second
 
 func StartSearchTUI(query string) {
 	columns := []table.Column{
@@ -50,10 +67,17 @@ func StartSearchTUI(query string) {
 	t.SetStyles(s)
 
 	m := searchModel{
-		query:   query,
-		table:   t,
-		loading: true,
-		results: nil,
+		query:          query,
+		table:          t,
+		loading:        true,
+		results:        nil,
+		sourcesTotal:   len(allSources),
+		sourcesDone:    0,
+		sourcesRunning: make(map[string]bool),
+	}
+
+	for _, src := range allSources {
+		m.sourcesRunning[src.name] = true
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -69,25 +93,34 @@ func StartSearchTUI(query string) {
 }
 
 type searchModel struct {
-	query    string
-	table    table.Model
-	loading  bool
-	results  []Result
-	quitting bool
-	selected *Result
-	frame    int
+	query          string
+	table          table.Model
+	loading        bool
+	results        []Result
+	quitting       bool
+	selected       *Result
+	frame          int
+	sourcesTotal   int
+	sourcesDone    int
+	sourcesRunning map[string]bool
+	seen           map[string]bool
 }
 
-type searchResultsMsg []Result
-
-func (m searchModel) Init() tea.Cmd {
-	return tea.Batch(
-		fetchResultsCmd(m.query),
-		searchTickCmd(),
-	)
+type searchPartialMsg struct {
+	source  string
+	results []Result
 }
 
 type searchTickMsg struct{}
+
+func (m searchModel) Init() tea.Cmd {
+	var cmds []tea.Cmd
+	for _, src := range allSources {
+		cmds = append(cmds, fetchSourceCmd(src.name, src.fn, m.query))
+	}
+	cmds = append(cmds, searchTickCmd())
+	return tea.Batch(cmds...)
+}
 
 func searchTickCmd() tea.Cmd {
 	return tea.Tick(150*time.Millisecond, func(_ time.Time) tea.Msg {
@@ -95,72 +128,12 @@ func searchTickCmd() tea.Cmd {
 	})
 }
 
-func fetchResultsCmd(query string) tea.Cmd {
+func fetchSourceCmd(name string, fn func(ctx context.Context, q string) ([]Result, error), query string) tea.Cmd {
 	return func() tea.Msg {
-		var wg sync.WaitGroup
-		var mu sync.Mutex
-		var all []Result
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			res, _ := searchYTSOfficial(query)
-			mu.Lock()
-			all = append(all, res...)
-			mu.Unlock()
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			res, _ := searchYTS(query)
-			mu.Lock()
-			all = append(all, res...)
-			mu.Unlock()
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			res, _ := searchNyaa(query)
-			mu.Lock()
-			all = append(all, res...)
-			mu.Unlock()
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			res, _ := search1337x(query)
-			mu.Lock()
-			all = append(all, res...)
-			mu.Unlock()
-		}()
-
-		wg.Wait()
-
-		seen := make(map[string]bool)
-		var deduped []Result
-		for _, r := range all {
-			hash := extractBTIH(r.Magnet)
-			if hash != "" && seen[hash] {
-				continue
-			}
-			if hash != "" {
-				seen[hash] = true
-			}
-			deduped = append(deduped, r)
-		}
-
-		for i := 0; i < len(deduped); i++ {
-			for j := i + 1; j < len(deduped); j++ {
-				if deduped[i].Seeders < deduped[j].Seeders {
-					deduped[i], deduped[j] = deduped[j], deduped[i]
-				}
-			}
-		}
-
-		return searchResultsMsg(deduped)
+		ctx, cancel := context.WithTimeout(context.Background(), sourceTimeout)
+		defer cancel()
+		res, _ := fn(ctx, query)
+		return searchPartialMsg{source: name, results: res}
 	}
 }
 
@@ -202,34 +175,61 @@ func (m searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.loading {
 			return m, searchTickCmd()
 		}
-	case searchResultsMsg:
-		m.loading = false
-		m.results = msg
+	case searchPartialMsg:
+		m.sourcesDone++
+		delete(m.sourcesRunning, msg.source)
 
-		var rows []table.Row
-		for _, r := range m.results {
-			title := r.Title
-			if len(title) > 45 {
-				title = title[:42] + "..."
-			}
-
-			seedStr := fmt.Sprintf("%d", r.Seeders)
-
-			source := formatSource(r.Source)
-
-			rows = append(rows, table.Row{
-				title,
-				r.Resolution,
-				seedStr,
-				source,
-			})
+		if m.seen == nil {
+			m.seen = make(map[string]bool)
 		}
-		m.table.SetRows(rows)
+
+		for _, r := range msg.results {
+			hash := extractBTIH(r.Magnet)
+			if hash != "" && m.seen[hash] {
+				continue
+			}
+			if hash != "" {
+				m.seen[hash] = true
+			}
+			m.results = append(m.results, r)
+		}
+
+		// re-sort by seeders
+		for i := 0; i < len(m.results); i++ {
+			for j := i + 1; j < len(m.results); j++ {
+				if m.results[i].Seeders < m.results[j].Seeders {
+					m.results[i], m.results[j] = m.results[j], m.results[i]
+				}
+			}
+		}
+
+		if m.sourcesDone >= m.sourcesTotal {
+			m.loading = false
+		}
+
+		m.rebuildTable()
 		return m, nil
 	}
 
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd
+}
+
+func (m *searchModel) rebuildTable() {
+	var rows []table.Row
+	for _, r := range m.results {
+		title := r.Title
+		if len(title) > 45 {
+			title = title[:42] + "..."
+		}
+		rows = append(rows, table.Row{
+			title,
+			r.Resolution,
+			fmt.Sprintf("%d", r.Seeders),
+			formatSource(r.Source),
+		})
+	}
+	m.table.SetRows(rows)
 }
 
 func formatSource(src string) string {
@@ -242,6 +242,12 @@ func formatSource(src string) string {
 		return "1337x"
 	case "nyaa":
 		return "Nyaa"
+	case "tpb":
+		return "TPB"
+	case "eztv":
+		return "EZTV"
+	case "subsplease":
+		return "SubsPlease"
 	default:
 		return src
 	}
@@ -258,18 +264,23 @@ func (m searchModel) View() string {
 	queryStyle := lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
 	b.WriteString(fmt.Sprintf("  %s %s\n", headerStyle.Render("🔍 Search:"), queryStyle.Render(m.query)))
 
-	if m.loading {
+	if m.loading && len(m.results) == 0 {
 		spinners := []string{"⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"}
 		spin := spinners[m.frame%len(spinners)]
 		loadStyle := lipgloss.NewStyle().Foreground(colorAmber).Bold(true)
-		sourceStyle := lipgloss.NewStyle().Foreground(colorTextDim).Italic(true)
+		doneStyle := lipgloss.NewStyle().Foreground(colorGreen)
+		waitStyle := lipgloss.NewStyle().Foreground(colorTextDim).Italic(true)
 
 		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf("  %s Searching all sources...\n\n", loadStyle.Render(spin)))
-		b.WriteString(sourceStyle.Render("  ├─ YTS Official  (en.yts-official.biz)\n"))
-		b.WriteString(sourceStyle.Render("  ├─ YTS.mx        (yts.mx)\n"))
-		b.WriteString(sourceStyle.Render("  ├─ 1337x         (1337x.to)\n"))
-		b.WriteString(sourceStyle.Render("  └─ Nyaa          (nyaa.si)\n"))
+		b.WriteString(fmt.Sprintf("  %s Searching %d sources...\n\n", loadStyle.Render(spin), m.sourcesTotal))
+
+		for _, src := range allSources {
+			if m.sourcesRunning[src.name] {
+				b.WriteString(waitStyle.Render(fmt.Sprintf("  ├─ %-14s searching...\n", src.name)))
+			} else {
+				b.WriteString(doneStyle.Render(fmt.Sprintf("  ├─ %-14s ✓\n", src.name)))
+			}
+		}
 
 		box := lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
@@ -278,7 +289,7 @@ func (m searchModel) View() string {
 		return box.Render(b.String())
 	}
 
-	if len(m.results) == 0 {
+	if len(m.results) == 0 && !m.loading {
 		emptyStyle := lipgloss.NewStyle().Foreground(colorRed)
 		b.WriteString("\n")
 		b.WriteString(fmt.Sprintf("  %s No results found.\n", emptyStyle.Render("✕")))
@@ -293,7 +304,12 @@ func (m searchModel) View() string {
 	}
 
 	countStyle := lipgloss.NewStyle().Foreground(colorTextDim)
-	b.WriteString(countStyle.Render(fmt.Sprintf("  %d results", len(m.results))))
+	if m.loading {
+		countStyle = lipgloss.NewStyle().Foreground(colorAmber)
+		b.WriteString(countStyle.Render(fmt.Sprintf("  %d results (%d/%d sources)", len(m.results), m.sourcesDone, m.sourcesTotal)))
+	} else {
+		b.WriteString(countStyle.Render(fmt.Sprintf("  %d results", len(m.results))))
+	}
 	b.WriteString("\n\n")
 
 	tableBox := lipgloss.NewStyle().
@@ -309,14 +325,15 @@ func (m searchModel) View() string {
 	return b.String()
 }
 
-func searchNyaa(q string) ([]Result, error) {
-	u := "https://nyaa.si/?f=0&c=0_0&s=seeders&o=desc&q=" + url.QueryEscape(q)
-	return scrape(u, "nyaa")
-}
+// existing scrapers wrapped with context support
 
-func searchYTS(q string) ([]Result, error) {
+func searchYTSCtx(ctx context.Context, q string) ([]Result, error) {
 	u := "https://yts.mx/api/v2/list_movies.json?query_term=" + url.QueryEscape(q)
-	resp, err := http.Get(u)
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -350,14 +367,74 @@ func searchYTS(q string) ([]Result, error) {
 	return res, nil
 }
 
-func search1337x(q string) ([]Result, error) {
-	return scrape("https://1337x.to/search/"+url.QueryEscape(q)+"/1/", "1337x")
+func search1337xCtx(ctx context.Context, q string) ([]Result, error) {
+	return scrapeCtx(ctx, "https://1337x.to/search/"+url.QueryEscape(q)+"/1/", "1337x")
 }
 
-func scrape(u, src string) ([]Result, error) {
-	req, _ := http.NewRequest("GET", u, nil)
+func searchYTSOfficialCtx(ctx context.Context, q string) ([]Result, error) {
+	browseURL := "https://en.yts-official.biz/browse-movies?keyword=" + url.QueryEscape(q)
+	req, _ := http.NewRequestWithContext(ctx, "GET", browseURL, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	doc, _ := html.Parse(resp.Body)
+
+	var movieURLs []string
+	var movieTitles []string
+	var crawlBrowse func(*html.Node)
+	crawlBrowse = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			href := getAttr(n, "href")
+			class := getAttr(n, "class")
+			if class == "browse-movie-title" && strings.HasPrefix(href, "/movies/") {
+				fullURL := "https://en.yts-official.biz" + href
+				title := getTxt(n)
+				movieURLs = append(movieURLs, fullURL)
+				movieTitles = append(movieTitles, title)
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			crawlBrowse(c)
+		}
+	}
+	crawlBrowse(doc)
+
+	if len(movieURLs) == 0 {
+		return nil, nil
+	}
+
+	if len(movieURLs) > 5 {
+		movieURLs = movieURLs[:5]
+		movieTitles = movieTitles[:5]
+	}
+
+	ch := make(chan []Result, len(movieURLs))
+	for i, mURL := range movieURLs {
+		go func(pageURL, title string) {
+			ch <- scrapeYTSOfficialDetail(pageURL, title)
+		}(mURL, movieTitles[i])
+	}
+
+	var results []Result
+	for range movieURLs {
+		select {
+		case res := <-ch:
+			results = append(results, res...)
+		case <-ctx.Done():
+			return results, nil
+		}
+	}
+	return results, nil
+}
+
+func scrapeCtx(ctx context.Context, u, src string) ([]Result, error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", u, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -409,6 +486,63 @@ func scrape(u, src string) ([]Result, error) {
 	f(doc)
 	return res, nil
 }
+
+func scrapeYTSOfficialDetail(pageURL, title string) []Result {
+	req, _ := http.NewRequest("GET", pageURL, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	doc, _ := html.Parse(resp.Body)
+
+	var magnets []string
+	var qualities []string
+	var crawlMagnets func(*html.Node)
+	crawlMagnets = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "a" {
+			href := getAttr(n, "href")
+			class := getAttr(n, "class")
+			if strings.Contains(class, "magnet-download") && strings.HasPrefix(href, "magnet:") {
+				magnets = append(magnets, href)
+				dlTitle := getAttr(n, "title")
+				quality := parseRes(dlTitle)
+				qualities = append(qualities, quality)
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			crawlMagnets(c)
+		}
+	}
+	crawlMagnets(doc)
+
+	seeds := 0
+	bodyText := collectAllText(doc)
+	psMatch := regexp.MustCompile(`P/S\s+(\d+)\s*/\s*(\d+)`).FindStringSubmatch(bodyText)
+	if len(psMatch) > 2 {
+		seeds, _ = strconv.Atoi(psMatch[2])
+	}
+
+	var results []Result
+	for i, mag := range magnets {
+		quality := "unknown"
+		if i < len(qualities) {
+			quality = qualities[i]
+		}
+		results = append(results, Result{
+			Title:      title,
+			Magnet:     mag,
+			Resolution: quality,
+			Seeders:    seeds,
+			Source:     "yts-official",
+		})
+	}
+	return results
+}
+
+// html helpers
 
 func findMag(n *html.Node) string {
 	if n.Type == html.ElementNode && n.Data == "a" {
@@ -485,121 +619,6 @@ func extractBTIH(magnet string) string {
 		return strings.ToUpper(m[1])
 	}
 	return ""
-}
-
-func searchYTSOfficial(q string) ([]Result, error) {
-	browseURL := "https://en.yts-official.biz/browse-movies?keyword=" + url.QueryEscape(q)
-	req, _ := http.NewRequest("GET", browseURL, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	doc, _ := html.Parse(resp.Body)
-
-	var movieURLs []string
-	var movieTitles []string
-	var crawlBrowse func(*html.Node)
-	crawlBrowse = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" {
-			href := getAttr(n, "href")
-			class := getAttr(n, "class")
-			if class == "browse-movie-title" && strings.HasPrefix(href, "/movies/") {
-				fullURL := "https://en.yts-official.biz" + href
-				title := getTxt(n)
-				movieURLs = append(movieURLs, fullURL)
-				movieTitles = append(movieTitles, title)
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			crawlBrowse(c)
-		}
-	}
-	crawlBrowse(doc)
-
-	if len(movieURLs) == 0 {
-		return nil, nil
-	}
-
-	if len(movieURLs) > 5 {
-		movieURLs = movieURLs[:5]
-		movieTitles = movieTitles[:5]
-	}
-
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	var results []Result
-
-	for i, mURL := range movieURLs {
-		wg.Add(1)
-		go func(pageURL, title string) {
-			defer wg.Done()
-			res := scrapeYTSOfficialDetail(pageURL, title)
-			mu.Lock()
-			results = append(results, res...)
-			mu.Unlock()
-		}(mURL, movieTitles[i])
-	}
-
-	wg.Wait()
-	return results, nil
-}
-
-func scrapeYTSOfficialDetail(pageURL, title string) []Result {
-	req, _ := http.NewRequest("GET", pageURL, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil
-	}
-	defer resp.Body.Close()
-
-	doc, _ := html.Parse(resp.Body)
-
-	var magnets []string
-	var qualities []string
-	var crawlMagnets func(*html.Node)
-	crawlMagnets = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "a" {
-			href := getAttr(n, "href")
-			class := getAttr(n, "class")
-			if strings.Contains(class, "magnet-download") && strings.HasPrefix(href, "magnet:") {
-				magnets = append(magnets, href)
-				dlTitle := getAttr(n, "title")
-				quality := parseRes(dlTitle)
-				qualities = append(qualities, quality)
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			crawlMagnets(c)
-		}
-	}
-	crawlMagnets(doc)
-
-	seeds := 0
-	bodyText := collectAllText(doc)
-	psMatch := regexp.MustCompile(`P/S\s+(\d+)\s*/\s*(\d+)`).FindStringSubmatch(bodyText)
-	if len(psMatch) > 2 {
-		seeds, _ = strconv.Atoi(psMatch[2])
-	}
-
-	var results []Result
-	for i, mag := range magnets {
-		quality := "unknown"
-		if i < len(qualities) {
-			quality = qualities[i]
-		}
-		results = append(results, Result{
-			Title:      title,
-			Magnet:     mag,
-			Resolution: quality,
-			Seeders:    seeds,
-			Source:     "yts-official",
-		})
-	}
-	return results
 }
 
 func collectAllText(n *html.Node) string {

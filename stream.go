@@ -126,6 +126,8 @@ func streamTorrent(uri string) {
 	fmt.Printf("> connecting peers...\n")
 
 	n := t.NumPieces()
+	lastPiece := int(n) - 1
+
 	for i := 0; i < int(n); i++ {
 		pct := float64(i) / float64(n)
 		switch {
@@ -139,6 +141,12 @@ func streamTorrent(uri string) {
 			t.Piece(i).SetPriority(torrent.PiecePriorityNormal)
 		}
 	}
+
+	// MP4 moov atom is often at the end, players need it to seek
+	if lastPiece > 0 {
+		t.Piece(lastPiece).SetPriority(torrent.PiecePriorityNow)
+	}
+
 	vid.Download()
 
 	mux := http.NewServeMux()
@@ -146,6 +154,7 @@ func streamTorrent(uri string) {
 		rd := vid.NewReader()
 		defer rd.Close()
 		rd.SetResponsive()
+		rd.SetReadahead(20 * 1024 * 1024) // 20MB readahead
 		http.ServeContent(w, r, vid.DisplayPath(), time.Time{}, rd)
 	})
 
@@ -190,6 +199,28 @@ func streamTorrent(uri string) {
 		Resolution: currentStream.Resolution,
 		FileSize:   currentStream.FileSizeFmt,
 	})
+
+	// pre-buffer: wait for at least 1% of pieces before opening player
+	targetPieces := int(n) / 100
+	if targetPieces < 1 {
+		targetPieces = 1
+	}
+	currentStream.mu.Lock()
+	currentStream.Status = "pre-buffering"
+	currentStream.mu.Unlock()
+
+	for {
+		ready := 0
+		for i := 0; i < int(n) && i < targetPieces+5; i++ {
+			if t.Piece(i).State().Complete {
+				ready++
+			}
+		}
+		if ready >= targetPieces {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
 
 	currentStream.mu.Lock()
 	currentStream.Status = "streaming"

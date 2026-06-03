@@ -1,69 +1,220 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
-	"os/exec"
-	"runtime"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
 )
 
-var sites = []struct {
-	cat, name, url string
-}{
-	{"movies & tv", "YTS", "https://yts.mx"},
-	{"movies & tv", "EZTV", "https://eztv.re"},
-	{"movies & tv", "1337x", "https://1337x.to"},
-	{"movies & tv", "PirateBay", "https://thepiratebay.org/index.html"},
-	{"movies & tv", "KAT", "https://kickasstorrents.to"},
-	{"movies & tv", "TorrentGalaxy", "https://torrentgalaxy.to"},
-	{"movies & tv", "MagnetDL", "https://www.magnetdl.com"},
-	{"anime", "NyaaSi", "https://nyaa.si"},
-	{"anime", "HorribleSubs", "https://subsplease.org"},
-	{"anime", "TokyoTosho", "https://www.tokyotosho.info"},
-	{"anime", "AniDex", "https://anidex.info"},
-	{"anime", "nekoBT", "https://nekobt.org"},
-	{"regional", "Rutor  🇷🇺", "https://rutor.info"},
-	{"regional", "Rutracker", "https://rutracker.org"},
-	{"regional", "Comando", "https://comando.la"},
-	{"regional", "BluDV", "https://bludv.xyz"},
-	{"regional", "Torrent9", "https://www.torrent9.ph"},
-	{"regional", "ilCorSaRo", "https://ilcorsaronero.info"},
-	{"regional", "MejorTorrent", "https://www.mejortorrent.org"},
-	{"regional", "Wolfmax4k", "https://wolfmax4k.com"},
-	{"regional", "Cinecalidad", "https://cinecalidad.lol"},
-	{"regional", "BestTorrents", "https://besttorrents.pl"},
+var httpClient = &http.Client{Timeout: 8 * time.Second}
+
+func searchTPB(ctx context.Context, q string) ([]Result, error) {
+	u := "https://apibay.org/q.php?q=" + url.QueryEscape(q)
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var items []struct {
+		Name     string `json:"name"`
+		InfoHash string `json:"info_hash"`
+		Seeders  string `json:"seeders"`
+		Leechers string `json:"leechers"`
+		Size     string `json:"size"`
+		Category string `json:"category"`
+	}
+	json.NewDecoder(resp.Body).Decode(&items)
+
+	var res []Result
+	for _, it := range items {
+		if it.InfoHash == "0000000000000000000000000000000000000000" {
+			continue
+		}
+		seeds, _ := strconv.Atoi(it.Seeders)
+		if seeds == 0 {
+			continue
+		}
+		mag := fmt.Sprintf("magnet:?xt=urn:btih:%s&dn=%s", it.InfoHash, url.QueryEscape(it.Name))
+		res = append(res, Result{
+			Title:      it.Name,
+			Magnet:     mag,
+			Resolution: parseRes(it.Name),
+			Seeders:    seeds,
+			Source:     "tpb",
+		})
+	}
+	return res, nil
 }
 
-func showSources() {
-	lastCat := ""
-	for i, s := range sites {
-		if s.cat != lastCat {
-			if lastCat != "" {
-				fmt.Println()
-			}
-			fmt.Println(s.cat)
-			lastCat = s.cat
-		}
-		fmt.Printf("%3d) %s\n", i+1, s.name)
-	}
-
-	fmt.Print("\npick: ")
-	var pick int
-	if _, err := fmt.Scan(&pick); err != nil || pick < 1 || pick > len(sites) {
-		fmt.Println("invalid input")
-		return
-	}
-
-	url := sites[pick-1].url
-	var err error
-	switch runtime.GOOS {
-	case "windows":
-		err = exec.Command("cmd", "/c", "start", "", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		err = exec.Command("xdg-open", url).Start()
-	}
+func searchEZTV(ctx context.Context, q string) ([]Result, error) {
+	u := "https://eztv.re/api/get-torrents?limit=50&page=1"
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
 	if err != nil {
-		fmt.Println("error opening browser:", err)
+		return nil, err
 	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Torrents []struct {
+			Title     string `json:"title"`
+			MagnetURL string `json:"magnet_url"`
+			Hash      string `json:"hash"`
+			Seeds     int    `json:"seeds"`
+			Peers     int    `json:"peers"`
+			Season    string `json:"season"`
+			Episode   string `json:"episode"`
+		} `json:"torrents"`
+	}
+	json.NewDecoder(resp.Body).Decode(&data)
+
+	lq := strings.ToLower(q)
+	var res []Result
+	for _, t := range data.Torrents {
+		if !strings.Contains(strings.ToLower(t.Title), lq) {
+			continue
+		}
+		if t.Seeds == 0 {
+			continue
+		}
+		mag := t.MagnetURL
+		if mag == "" && t.Hash != "" {
+			mag = fmt.Sprintf("magnet:?xt=urn:btih:%s&dn=%s", t.Hash, url.QueryEscape(t.Title))
+		}
+		if mag == "" {
+			continue
+		}
+		ep := 0
+		if t.Episode != "" {
+			ep, _ = strconv.Atoi(t.Episode)
+		}
+		res = append(res, Result{
+			Title:      t.Title,
+			Magnet:     mag,
+			Resolution: parseRes(t.Title),
+			Seeders:    t.Seeds,
+			Source:     "eztv",
+			Episode:    ep,
+		})
+	}
+	return res, nil
+}
+
+type rssItem struct {
+	Title string `xml:"title"`
+	Link  string `xml:"link"`
+	GUID  string `xml:"guid"`
+}
+
+type rssChannel struct {
+	Items []rssItem `xml:"item"`
+}
+
+type rssFeed struct {
+	Channel rssChannel `xml:"channel"`
+}
+
+func searchSubsPlease(ctx context.Context, q string) ([]Result, error) {
+	u := "https://subsplease.org/rss/?t&r=1080"
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var feed rssFeed
+	xml.NewDecoder(resp.Body).Decode(&feed)
+
+	lq := strings.ToLower(q)
+	var res []Result
+	for _, item := range feed.Channel.Items {
+		if !strings.Contains(strings.ToLower(item.Title), lq) {
+			continue
+		}
+		mag := item.Link
+		if !strings.HasPrefix(mag, "magnet:") {
+			mag = item.GUID
+		}
+		if !strings.HasPrefix(mag, "magnet:") {
+			continue
+		}
+		res = append(res, Result{
+			Title:      item.Title,
+			Magnet:     mag,
+			Resolution: parseRes(item.Title),
+			Seeders:    50,
+			Source:     "subsplease",
+			Episode:    parseEp(item.Title),
+		})
+	}
+	return res, nil
+}
+
+func searchNyaaRSS(ctx context.Context, q string) ([]Result, error) {
+	u := "https://nyaa.si/?page=rss&q=" + url.QueryEscape(q) + "&c=1_2&s=seeders&o=desc"
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	type nyaaItem struct {
+		Title   string `xml:"title"`
+		Link    string `xml:"link"`
+		Seeders string `xml:"seeders"`
+	}
+	type nyaaChannel struct {
+		Items []nyaaItem `xml:"item"`
+	}
+	type nyaaFeed struct {
+		Channel nyaaChannel `xml:"channel"`
+	}
+
+	var feed nyaaFeed
+	xml.NewDecoder(resp.Body).Decode(&feed)
+
+	var res []Result
+	for _, item := range feed.Channel.Items {
+		seeds, _ := strconv.Atoi(item.Seeders)
+		mag := item.Link
+		if !strings.HasPrefix(mag, "magnet:") {
+			continue
+		}
+		res = append(res, Result{
+			Title:      item.Title,
+			Magnet:     mag,
+			Resolution: parseRes(item.Title),
+			Seeders:    seeds,
+			Source:     "nyaa",
+			Episode:    parseEp(item.Title),
+		})
+	}
+	return res, nil
 }

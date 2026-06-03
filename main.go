@@ -33,7 +33,10 @@ func main() {
 		StartSearchTUI(query)
 
 	case arg == "sources":
-		showSources()
+		fmt.Println("Available sources:")
+		for _, s := range allSources {
+			fmt.Printf("  • %s\n", s.name)
+		}
 
 	case arg == "history":
 		StartHistoryTUI()

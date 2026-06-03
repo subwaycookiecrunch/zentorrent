@@ -177,8 +177,14 @@ func (m streamModel) View() string {
 	case "buffering":
 		spin := []string{"◐", "◓", "◑", "◒"}
 		statusBadge = lipgloss.NewStyle().Foreground(colorAmber).Bold(true).Render(spin[m.frame%4] + " BUFFERING")
+	case "pre-buffering":
+		spin := []string{"◐", "◓", "◑", "◒"}
+		statusBadge = lipgloss.NewStyle().Foreground(colorCyan).Bold(true).Render(spin[m.frame%4] + " PRE-BUFFERING (launching player soon)")
 	case "streaming":
 		statusBadge = lipgloss.NewStyle().Foreground(colorGreen).Bold(true).Render("▶ STREAMING")
+	case "downloading":
+		spin := []string{"◐", "◓", "◑", "◒"}
+		statusBadge = lipgloss.NewStyle().Foreground(colorCyan).Bold(true).Render(spin[m.frame%4] + " DOWNLOADING")
 	case "complete":
 		statusBadge = lipgloss.NewStyle().Foreground(colorCyan).Bold(true).Render("✓ COMPLETE")
 	default:
