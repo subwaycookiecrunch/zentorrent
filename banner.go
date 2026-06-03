@@ -18,9 +18,7 @@ const asciiArt = `  ███████╗███████╗███╗
 
 const subtitle = "  T O R R E N T"
 
-// PrintBanner displays the styled ASCII art banner
 func PrintBanner() {
-	// Gradient from purple to cyan
 	gradientStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#7c3aed")).
 		Bold(true)
@@ -46,7 +44,6 @@ func PrintBanner() {
 	fmt.Println()
 }
 
-// PrintUsage displays the help text with styling
 func PrintUsage() {
 	cmdStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#7c3aed")).

@@ -22,7 +22,6 @@ type Result struct {
 	Seeders, Episode                  int
 }
 
-// StartSearchTUI launches the interactive search UI
 func StartSearchTUI(query string) {
 	columns := []table.Column{
 		{Title: "Title", Width: 48},
@@ -65,7 +64,6 @@ func StartSearchTUI(query string) {
 	}
 
 	if sm, ok := finalModel.(searchModel); ok && sm.selected != nil {
-		// Stream the selected magnet
 		StartStreamTUI(sm.selected.Magnet)
 	}
 }
@@ -103,7 +101,6 @@ func fetchResultsCmd(query string) tea.Cmd {
 		var mu sync.Mutex
 		var all []Result
 
-		// Priority 1: YTS Official (en.yts-official.biz)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -113,7 +110,6 @@ func fetchResultsCmd(query string) tea.Cmd {
 			mu.Unlock()
 		}()
 
-		// Priority 2: YTS.mx API
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -143,7 +139,6 @@ func fetchResultsCmd(query string) tea.Cmd {
 
 		wg.Wait()
 
-		// Deduplicate by magnet hash (btih)
 		seen := make(map[string]bool)
 		var deduped []Result
 		for _, r := range all {
@@ -218,10 +213,8 @@ func (m searchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				title = title[:42] + "..."
 			}
 
-			// Color-code seeders
 			seedStr := fmt.Sprintf("%d", r.Seeders)
 
-			// Format source with badge
 			source := formatSource(r.Source)
 
 			rows = append(rows, table.Row{
@@ -261,13 +254,11 @@ func (m searchModel) View() string {
 
 	var b strings.Builder
 
-	// Header
 	headerStyle := lipgloss.NewStyle().Foreground(colorPurple).Bold(true)
 	queryStyle := lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
 	b.WriteString(fmt.Sprintf("  %s %s\n", headerStyle.Render("🔍 Search:"), queryStyle.Render(m.query)))
 
 	if m.loading {
-		// Animated loading
 		spinners := []string{"⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"}
 		spin := spinners[m.frame%len(spinners)]
 		loadStyle := lipgloss.NewStyle().Foreground(colorAmber).Bold(true)
@@ -301,12 +292,10 @@ func (m searchModel) View() string {
 		return box.Render(b.String())
 	}
 
-	// Results count
 	countStyle := lipgloss.NewStyle().Foreground(colorTextDim)
 	b.WriteString(countStyle.Render(fmt.Sprintf("  %d results", len(m.results))))
 	b.WriteString("\n\n")
 
-	// Table
 	tableBox := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(colorBorderLit)
@@ -314,14 +303,12 @@ func (m searchModel) View() string {
 	b.WriteString(tableBox.Render(m.table.View()))
 	b.WriteString("\n\n")
 
-	// Footer
 	b.WriteString(footerStyle.Render("  ↑/↓ navigate • enter stream • b bookmark • q back"))
 	b.WriteString("\n")
 
 	return b.String()
 }
 
-// Scraper functions
 func searchNyaa(q string) ([]Result, error) {
 	u := "https://nyaa.si/?f=0&c=0_0&s=seeders&o=desc&q=" + url.QueryEscape(q)
 	return scrape(u, "nyaa")
@@ -492,7 +479,6 @@ func parseRes(s string) string {
 	return "unknown"
 }
 
-// extractBTIH extracts the info hash from a magnet link for dedup purposes
 func extractBTIH(magnet string) string {
 	m := regexp.MustCompile(`(?i)btih:([a-fA-F0-9]+)`).FindStringSubmatch(magnet)
 	if len(m) > 1 {
@@ -501,7 +487,6 @@ func extractBTIH(magnet string) string {
 	return ""
 }
 
-// searchYTSOfficial scrapes en.yts-official.biz for movies
 func searchYTSOfficial(q string) ([]Result, error) {
 	browseURL := "https://en.yts-official.biz/browse-movies?keyword=" + url.QueryEscape(q)
 	req, _ := http.NewRequest("GET", browseURL, nil)
@@ -514,7 +499,6 @@ func searchYTSOfficial(q string) ([]Result, error) {
 
 	doc, _ := html.Parse(resp.Body)
 
-	// Step 1: Extract movie detail page URLs from browse results
 	var movieURLs []string
 	var movieTitles []string
 	var crawlBrowse func(*html.Node)
@@ -539,13 +523,11 @@ func searchYTSOfficial(q string) ([]Result, error) {
 		return nil, nil
 	}
 
-	// Limit to first 5 movies
 	if len(movieURLs) > 5 {
 		movieURLs = movieURLs[:5]
 		movieTitles = movieTitles[:5]
 	}
 
-	// Step 2: Scrape each detail page in parallel for magnet links
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var results []Result
@@ -565,7 +547,6 @@ func searchYTSOfficial(q string) ([]Result, error) {
 	return results, nil
 }
 
-// scrapeYTSOfficialDetail extracts magnet links from a YTS Official movie detail page
 func scrapeYTSOfficialDetail(pageURL, title string) []Result {
 	req, _ := http.NewRequest("GET", pageURL, nil)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
@@ -621,7 +602,6 @@ func scrapeYTSOfficialDetail(pageURL, title string) []Result {
 	return results
 }
 
-// collectAllText collects all text content from an HTML node tree
 func collectAllText(n *html.Node) string {
 	if n.Type == html.TextNode {
 		return n.Data

@@ -19,7 +19,6 @@ func Notify(title, message string) {
 	case "linux":
 		exec.Command("notify-send", "-a", "ZenTorrent", title, message).Start()
 	case "windows":
-		// PowerShell notification
 		ps := fmt.Sprintf(`[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null; `+
 			`$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(0); `+
 			`$text = $template.GetElementsByTagName("text"); `+

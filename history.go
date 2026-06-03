@@ -30,7 +30,6 @@ func AddHistory(entry HistoryEntry) {
 	entries := loadHistory()
 	entry.Timestamp = time.Now()
 
-	// Deduplicate: if same btih hash exists, update its timestamp instead of adding a copy
 	newHash := extractHistBTIH(entry.Magnet)
 	if newHash != "" {
 		for i, e := range entries {
@@ -47,7 +46,6 @@ func AddHistory(entry HistoryEntry) {
 
 	entries = append(entries, entry)
 
-	// Prune to max entries
 	if len(entries) > maxHistoryEntries {
 		entries = entries[len(entries)-maxHistoryEntries:]
 	}
@@ -79,7 +77,6 @@ func extractHistBTIH(magnet string) string {
 func GetHistory(limit int) []HistoryEntry {
 	entries := loadHistory()
 
-	// Sort newest first
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Timestamp.After(entries[j].Timestamp)
 	})
@@ -258,14 +255,12 @@ func (m historyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "d", "backspace":
-			// Delete selected entry
 			if len(m.entries) > 0 {
 				idx := m.table.Cursor()
 				if idx >= 0 && idx < len(m.entries) {
 					m.entries = append(m.entries[:idx], m.entries[idx+1:]...)
 					saveHistory(m.entries)
 
-					// Rebuild table rows
 					var rows []table.Row
 					for _, e := range m.entries {
 						title := e.Title

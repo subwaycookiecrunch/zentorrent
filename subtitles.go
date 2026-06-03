@@ -11,7 +11,6 @@ import (
 	"strings"
 )
 
-// SubtitleResult represents a subtitle search result
 type SubtitleResult struct {
 	ID       int    `json:"id"`
 	FileID   int    `json:"file_id"`
@@ -20,7 +19,6 @@ type SubtitleResult struct {
 	Download string `json:"download_url"`
 }
 
-// SearchSubtitles queries the OpenSubtitles REST API
 func SearchSubtitles(query, lang string) ([]SubtitleResult, error) {
 	apiKey := appConfig.Subtitles.APIKey
 	if apiKey == "" {
@@ -75,14 +73,12 @@ func SearchSubtitles(query, lang string) ([]SubtitleResult, error) {
 	return subs, nil
 }
 
-// DownloadSubtitle downloads a subtitle by file ID and returns the local file path
 func DownloadSubtitle(fileID int) (string, error) {
 	apiKey := appConfig.Subtitles.APIKey
 	if apiKey == "" {
 		return "", fmt.Errorf("no API key")
 	}
 
-	// Request download link
 	body := fmt.Sprintf(`{"file_id": %d}`, fileID)
 	req, err := http.NewRequest("POST",
 		"https://api.opensubtitles.com/api/v1/download",
@@ -111,7 +107,6 @@ func DownloadSubtitle(fileID int) (string, error) {
 		return "", fmt.Errorf("no download link returned")
 	}
 
-	// Download the actual subtitle file
 	srtResp, err := http.Get(dlResp.Link)
 	if err != nil {
 		return "", err
@@ -127,7 +122,6 @@ func DownloadSubtitle(fileID int) (string, error) {
 	defer f.Close()
 	io.Copy(f, srtResp.Body)
 
-	// Convert to VTT for browser compatibility
 	vttPath := filepath.Join(tmpDir, "subtitles.vtt")
 	if err := SRTtoVTT(srtPath, vttPath); err != nil {
 		return srtPath, nil // Return SRT if conversion fails
@@ -135,7 +129,6 @@ func DownloadSubtitle(fileID int) (string, error) {
 	return vttPath, nil
 }
 
-// SRTtoVTT converts an SRT subtitle file to WebVTT format
 func SRTtoVTT(srtPath, vttPath string) error {
 	data, err := os.ReadFile(srtPath)
 	if err != nil {
@@ -159,20 +152,17 @@ func SRTtoVTT(srtPath, vttPath string) error {
 	return nil
 }
 
-// AutoFetchSubtitle searches and downloads the best subtitle for a given title
 func AutoFetchSubtitle(title string) string {
 	if !appConfig.Subtitles.AutoFetch || appConfig.Subtitles.APIKey == "" {
 		return ""
 	}
 
-	// Clean up the title for searching
 	clean := cleanTitle(title)
 	subs, err := SearchSubtitles(clean, appConfig.Subtitles.Language)
 	if err != nil || len(subs) == 0 {
 		return ""
 	}
 
-	// Download the first (best) result
 	path, err := DownloadSubtitle(subs[0].FileID)
 	if err != nil {
 		return ""
@@ -181,7 +171,6 @@ func AutoFetchSubtitle(title string) string {
 }
 
 func cleanTitle(s string) string {
-	// Remove common torrent tags
 	for _, tag := range []string{
 		".mkv", ".mp4", ".avi", ".webm",
 		"1080p", "720p", "2160p", "4k",
@@ -201,7 +190,6 @@ func cleanTitle(s string) string {
 	s = strings.ReplaceAll(s, "(", "")
 	s = strings.ReplaceAll(s, ")", "")
 
-	// Trim multiple spaces
 	for strings.Contains(s, "  ") {
 		s = strings.ReplaceAll(s, "  ", " ")
 	}

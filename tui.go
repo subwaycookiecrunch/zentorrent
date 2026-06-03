@@ -40,9 +40,7 @@ var menuItems = []menuItem{
 	{"✕ ", "Quit", "Exit ZenTorrent", actionQuit},
 }
 
-// Styles
 var (
-	// Colors
 	colorPurple    = lipgloss.Color("#7c3aed")
 	colorCyan      = lipgloss.Color("#06b6d4")
 	colorGreen     = lipgloss.Color("#10b981")
@@ -55,7 +53,6 @@ var (
 	colorBorderLit = lipgloss.Color("#52525b")
 	colorBg        = lipgloss.Color("#18181b")
 
-	// Menu styles
 	menuTitleStyle = lipgloss.NewStyle().
 			Foreground(colorPurple).
 			Bold(true)
@@ -154,7 +151,6 @@ func StartMainMenu() {
 	case actionSettings:
 		StartConfigTUI()
 	case actionQuit:
-		// Clean exit
 	}
 }
 
@@ -196,7 +192,6 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
-		// Menu navigation
 		switch key {
 		case "q", "ctrl+c":
 			m.action = actionQuit
@@ -253,7 +248,6 @@ func (m menuModel) View() string {
 
 	var b strings.Builder
 
-	// ASCII art banner
 	banner := menuTitleStyle.Render(asciiArt)
 	sub := menuSubtitleStyle.Render(subtitle) + "  " + menuVersionStyle.Render("v"+Version)
 
@@ -262,7 +256,6 @@ func (m menuModel) View() string {
 	b.WriteString(sub)
 	b.WriteString("\n")
 
-	// Input mode
 	if m.inputMode != "" {
 		var label string
 		if m.inputMode == "search" {
@@ -281,7 +274,6 @@ func (m menuModel) View() string {
 		return menuBoxStyle.Render(b.String())
 	}
 
-	// Menu items
 	for i, item := range menuItems {
 		if i == m.cursor {
 			cursor := menuCursorStyle.Render("▸")

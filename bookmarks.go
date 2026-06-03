@@ -32,7 +32,7 @@ func AddBookmark(entry BookmarkEntry) {
 	if newHash != "" {
 		for _, e := range entries {
 			if extractHistBTIH(e.Magnet) == newHash {
-				return // Already bookmarked
+				return
 			}
 		}
 	}

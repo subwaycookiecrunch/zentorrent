@@ -23,12 +23,10 @@ func DetectPlayer() PlayerType {
 		return PlayerType(pref)
 	}
 
-	// Auto-detect: prefer mpv > vlc
 	if _, err := exec.LookPath("mpv"); err == nil {
 		return PlayerMPV
 	}
 
-	// Check VLC in common locations
 	for _, p := range vlcPaths() {
 		if _, err := os.Stat(p); err == nil {
 			return PlayerVLC
@@ -38,7 +36,6 @@ func DetectPlayer() PlayerType {
 		return PlayerVLC
 	}
 
-	// Fallback to VLC (user likely has it somewhere)
 	return PlayerVLC
 }
 

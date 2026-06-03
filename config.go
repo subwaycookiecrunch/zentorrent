@@ -66,7 +66,6 @@ func LoadConfig() Config {
 
 	path := configPath()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// Create default config on first run
 		_ = SaveConfig(conf)
 		return conf
 	}
@@ -92,7 +91,6 @@ func SaveConfig(conf Config) error {
 	}
 	defer f.Close()
 
-	// Write header comment
 	fmt.Fprintln(f, "# ZenTorrent v2 Configuration")
 	fmt.Fprintln(f, "# Player options: auto, mpv, vlc")
 	fmt.Fprintln(f, "")

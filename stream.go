@@ -48,7 +48,6 @@ func streamTorrent(uri string) {
 	cfg.Seed = false
 	cfg.ListenPort = 0
 
-	// Performance: connection limiting
 	cfg.EstablishedConnsPerTorrent = appConfig.MaxPeers
 	cfg.HalfOpenConnsPerTorrent = appConfig.MaxPeers / 2
 	cfg.DropMutuallyCompletePeers = true
@@ -73,7 +72,6 @@ func streamTorrent(uri string) {
 	}
 	defer cl.Close()
 
-	// Append extra trackers for better connectivity if it's a magnet
 	if strings.HasPrefix(uri, "magnet:") {
 		for _, tr := range []string{
 			"udp://open.tracker.cl:1337/announce",
@@ -106,7 +104,6 @@ func streamTorrent(uri string) {
 
 	<-t.GotInfo()
 
-	// Find the largest (video) file
 	var vid *torrent.File
 	for _, f := range t.Files() {
 		if vid == nil || f.Length() > vid.Length() {
@@ -117,7 +114,6 @@ func streamTorrent(uri string) {
 		return
 	}
 
-	// Update stream state
 	currentStream.mu.Lock()
 	currentStream.Filename = vid.DisplayPath()
 	currentStream.FileSize = vid.Length()
@@ -129,7 +125,6 @@ func streamTorrent(uri string) {
 	fmt.Printf("> found: %s (%s)\n", vid.DisplayPath(), formatSizeBytes(vid.Length()))
 	fmt.Printf("> connecting peers...\n")
 
-	// Performance: Smart piece prioritization
 	n := t.NumPieces()
 	for i := 0; i < int(n); i++ {
 		pct := float64(i) / float64(n)
@@ -146,7 +141,6 @@ func streamTorrent(uri string) {
 	}
 	vid.Download()
 
-	// Start HTTP streaming server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
 		rd := vid.NewReader()
@@ -155,7 +149,6 @@ func streamTorrent(uri string) {
 		http.ServeContent(w, r, vid.DisplayPath(), time.Time{}, rd)
 	})
 
-	// Subtitle endpoint
 	mux.HandleFunc("/subtitle", func(w http.ResponseWriter, r *http.Request) {
 		currentStream.mu.RLock()
 		subPath := currentStream.SubtitlePath
@@ -167,7 +160,6 @@ func streamTorrent(uri string) {
 		}
 	})
 
-	// Status endpoint for external tools
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -183,7 +175,6 @@ func streamTorrent(uri string) {
 
 	streamURL := fmt.Sprintf("http://localhost:%d/stream", appConfig.StreamPort)
 
-	// Auto-fetch subtitles in background
 	go func() {
 		subPath := AutoFetchSubtitle(vid.DisplayPath())
 		if subPath != "" {
@@ -193,7 +184,6 @@ func streamTorrent(uri string) {
 		}
 	}()
 
-	// Add to history
 	AddHistory(HistoryEntry{
 		Title:      vid.DisplayPath(),
 		Magnet:     uri,
@@ -205,10 +195,8 @@ func streamTorrent(uri string) {
 	currentStream.Status = "streaming"
 	currentStream.mu.Unlock()
 
-	// Live stats update loop
 	go updateStats(t, vid)
 
-	// Always launch native player (mpv > vlc)
 	fmt.Printf("> opening player (%s)...\n", DetectPlayer())
 	playerCmd, err := LaunchPlayer(streamURL, "")
 	if err != nil {
@@ -220,7 +208,6 @@ func streamTorrent(uri string) {
 		Notify("ZenTorrent", "Now streaming: "+vid.DisplayPath())
 	}
 
-	// Wait for player to exit
 	if playerCmd != nil {
 		playerCmd.Wait()
 	} else {
@@ -393,7 +380,6 @@ func updateStats(t *torrent.Torrent, vid *torrent.File) {
 			eta = fmtETAv2(secs)
 		}
 
-		// Calculate buffer percentage (first 5% of file)
 		bufferPieces := t.NumPieces() / 20
 		if bufferPieces < 1 {
 			bufferPieces = 1
@@ -424,7 +410,6 @@ func updateStats(t *torrent.Torrent, vid *torrent.File) {
 		currentStream.Status = status
 		currentStream.mu.Unlock()
 
-		// Dynamic re-prioritization based on download progress
 		reprioritize(t, completed, total)
 
 		if progress >= 100 {
@@ -444,13 +429,12 @@ func reprioritize(t *torrent.Torrent, completed, total int64) {
 
 	for i := 0; i < int(n); i++ {
 		if t.Piece(i).State().Complete {
-			continue // Skip completed pieces
+			continue
 		}
 
 		dist := i - playbackPiece
 		switch {
 		case dist < 0:
-			// Already past playback — lowest priority
 			t.Piece(i).SetPriority(torrent.PiecePriorityNone)
 		case dist < 10:
 			t.Piece(i).SetPriority(torrent.PiecePriorityNow)

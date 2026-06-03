@@ -19,7 +19,6 @@ type streamModel struct {
 }
 
 func StartStreamTUI(uri string) {
-	// Start the actual streaming in the background
 	go streamTorrent(uri)
 
 	p := tea.NewProgram(streamModel{magnet: uri, width: 60}, tea.WithAltScreen())
@@ -142,11 +141,9 @@ func (m streamModel) View() string {
 		filled = 0
 	}
 
-	// Gradient progress bar: purple → cyan
 	var barChars []string
 	for i := 0; i < barWidth; i++ {
 		if i < filled {
-			// Interpolate color from purple to cyan based on position
 			ratio := float64(i) / float64(barWidth)
 			r := int(124*(1-ratio) + 6*ratio)
 			g := int(58*(1-ratio) + 182*ratio)
@@ -158,7 +155,6 @@ func (m streamModel) View() string {
 		}
 	}
 
-	// Animated cursor at the progress edge
 	if filled > 0 && filled < barWidth {
 		pulseColors := []lipgloss.Color{"#a78bfa", "#c4b5fd", "#e9d5ff", "#c4b5fd", "#a78bfa"}
 		pulseIdx := m.frame % len(pulseColors)
@@ -194,10 +190,8 @@ func (m streamModel) View() string {
 	labelStyle := lipgloss.NewStyle().Foreground(colorTextDim)
 	valStyle := lipgloss.NewStyle().Foreground(colorTextPri)
 
-	// Speed with visual indicator
 	speedBar := ""
 	if speed != "" && speed != "0 B/s" {
-		// Parse speed roughly for visual
 		bars := 1
 		if strings.Contains(speed, "MB") {
 			bars = 5
@@ -215,7 +209,6 @@ func (m streamModel) View() string {
 			valStyle.Render(fmt.Sprintf("%d", peers)),
 		))
 
-		// Buffer bar is only for streaming
 		if !m.isDownload {
 			bufWidth := 15
 			bufFilled := int(buffered / 100 * float64(bufWidth))
@@ -233,14 +226,12 @@ func (m streamModel) View() string {
 				valStyle.Render(eta),
 			))
 
-			// Streaming port info
 			b.WriteString("\n")
 			portInfo := lipgloss.NewStyle().Foreground(colorTextDim).Italic(true).
 				Render(fmt.Sprintf("  Stream: localhost:%d/stream", appConfig.StreamPort))
 			b.WriteString(portInfo)
 			b.WriteString("\n\n")
 		} else {
-			// Download ETA
 			b.WriteString(fmt.Sprintf("  %s %s\n\n",
 				labelStyle.Render("⏱  ETA"),
 				valStyle.Render(eta),
@@ -255,7 +246,6 @@ func (m streamModel) View() string {
 		}
 		b.WriteString("\n")
 
-	// Wrap in a box
 	box := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(colorBorderLit).
@@ -264,7 +254,6 @@ func (m streamModel) View() string {
 	return box.Render(b.String())
 }
 
-// sparkline generates a mini sparkline from a value (0-100)
 func sparkline(val float64) string {
 	chars := []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 	idx := int(math.Min(val/100*float64(len(chars)-1), float64(len(chars)-1)))

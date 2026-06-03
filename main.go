@@ -7,14 +7,11 @@ import (
 	"strings"
 )
 
-// Global config instance
 var appConfig Config
 
 func main() {
-	// Initialize config
 	appConfig = LoadConfig()
 
-	// No arguments → launch interactive TUI menu
 	if len(os.Args) < 2 {
 		StartMainMenu()
 		return
@@ -48,7 +45,6 @@ func main() {
 		PrintConfig(appConfig)
 
 	case arg == "server":
-		// Background extension server mode
 		PrintBanner()
 		fmt.Printf("Starting background server on port %d...\n", appConfig.ExtPort)
 		go StartExtensionServer()
@@ -59,7 +55,6 @@ func main() {
 		PrintUsage()
 
 	default:
-		// Fallback for v1 compatibility where arg 1 is the magnet link
 		if strings.HasPrefix(arg, "magnet:") {
 			StartStreamTUI(arg)
 		} else {
@@ -72,7 +67,6 @@ func main() {
 }
 
 func checkStatus() {
-	// Quick check if the extension server is responding
 	url := fmt.Sprintf("http://localhost:%d/api/magnet", appConfig.ExtPort)
 	req, _ := http.NewRequest("OPTIONS", url, nil)
 	resp, err := http.DefaultClient.Do(req)
