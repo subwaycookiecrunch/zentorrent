@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,18 +14,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-
 type HistoryEntry struct {
 	Title      string    `json:"title"`
 	Magnet     string    `json:"magnet"`
 	Resolution string    `json:"resolution"`
 	Source     string    `json:"source"`
 	FileSize   string    `json:"file_size"`
+	Progress   float64   `json:"progress"`
 	Timestamp  time.Time `json:"timestamp"`
 }
 
 const maxHistoryEntries = 100
-
 
 func AddHistory(entry HistoryEntry) {
 	entries := loadHistory()
@@ -73,7 +73,6 @@ func extractHistBTIH(magnet string) string {
 	return ""
 }
 
-
 func GetHistory(limit int) []HistoryEntry {
 	entries := loadHistory()
 
@@ -86,7 +85,6 @@ func GetHistory(limit int) []HistoryEntry {
 	}
 	return entries
 }
-
 
 func ClearHistory() error {
 	return os.Remove(historyPath())
@@ -102,60 +100,13 @@ func loadHistory() []HistoryEntry {
 	return entries
 }
 
-
-func PrintHistory() {
-	entries := GetHistory(20)
-
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(colorPurple).
-		PaddingBottom(1)
-
-	rowStyle := lipgloss.NewStyle().
-		Foreground(colorTextSec)
-
-	timeStyle := lipgloss.NewStyle().
-		Foreground(colorCyan)
-
-	if len(entries) == 0 {
-		println(headerStyle.Render("📜 No history yet. Stream something first!"))
-		return
-	}
-
-	println(headerStyle.Render("📜 Recent Streams"))
-	println()
-
-	for i, e := range entries {
-		ago := timeAgo(e.Timestamp)
-		title := e.Title
-		if len(title) > 50 {
-			title = title[:47] + "..."
-		}
-
-		res := e.Resolution
-		if res == "" {
-			res = "?"
-		}
-
-		line := rowStyle.Render(
-			padRight(title, 52) + " " +
-				padRight(res, 8) + " " +
-				timeStyle.Render(ago),
-		)
-		_ = i
-		println("  " + line)
-	}
-}
-
-
-
 type historyModel struct {
 	table    table.Model
 	entries  []HistoryEntry
 	quitting bool
 	selected *HistoryEntry
+	action   string
 }
-
 
 func StartHistoryTUI() {
 	entries := GetHistory(50)
@@ -218,6 +169,7 @@ func StartHistoryTUI() {
 	m := historyModel{
 		table:   t,
 		entries: entries,
+		action:  "stream",
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -228,7 +180,11 @@ func StartHistoryTUI() {
 	}
 
 	if hm, ok := finalModel.(historyModel); ok && hm.selected != nil {
-		StartStreamTUI(hm.selected.Magnet)
+		if hm.action == "party" {
+			StartPartyTUI(hm.selected.Magnet)
+		} else {
+			StartStreamTUI(hm.selected.Magnet, nil, nil)
+		}
 	}
 }
 
@@ -242,14 +198,26 @@ func (m historyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "esc", "q", "ctrl+c":
+		case "esc", "q":
 			m.quitting = true
 			return m, tea.Quit
+		case "ctrl+c":
+			os.Exit(0)
 		case "enter":
 			if len(m.entries) > 0 {
 				idx := m.table.Cursor()
 				if idx >= 0 && idx < len(m.entries) {
 					m.selected = &m.entries[idx]
+					m.quitting = true
+					return m, tea.Quit
+				}
+			}
+		case "p":
+			if len(m.entries) > 0 {
+				idx := m.table.Cursor()
+				if idx >= 0 && idx < len(m.entries) {
+					m.selected = &m.entries[idx]
+					m.action = "party"
 					m.quitting = true
 					return m, tea.Quit
 				}
@@ -319,17 +287,10 @@ func (m historyModel) View() string {
 	b.WriteString(tableBox.Render(m.table.View()))
 	b.WriteString("\n\n")
 
-	b.WriteString(footerStyle.Render("  ↑/↓ navigate • enter re-stream • d delete • q back"))
+	b.WriteString(footerStyle.Render("  ↑/↓ navigate • enter re-stream • p party • d delete • q back"))
 	b.WriteString("\n")
 
 	return b.String()
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func timeAgo(t time.Time) string {
@@ -338,23 +299,16 @@ func timeAgo(t time.Time) string {
 	case d < time.Minute:
 		return "just now"
 	case d < time.Hour:
-		return intToStr(int(d.Minutes())) + "m ago"
+		return strconv.Itoa(int(d.Minutes())) + "m ago"
 	case d < 24*time.Hour:
-		return intToStr(int(d.Hours())) + "h ago"
+		return strconv.Itoa(int(d.Hours())) + "h ago"
 	default:
 		days := int(d.Hours() / 24)
 		if days == 1 {
 			return "yesterday"
 		}
-		return intToStr(days) + "d ago"
+		return strconv.Itoa(days) + "d ago"
 	}
-}
-
-func intToStr(n int) string {
-	if n < 10 {
-		return string(rune('0' + n))
-	}
-	return string(rune('0'+n/10)) + string(rune('0'+n%10))
 }
 
 func padRight(s string, n int) string {

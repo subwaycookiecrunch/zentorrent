@@ -6,8 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Version is set at build time via -ldflags
-var Version = "2.0.0"
+var Version = "3.0.0"
 
 const asciiArt = `  ███████╗███████╗███╗   ██╗
   ╚══███╔╝██╔════╝████╗  ██║

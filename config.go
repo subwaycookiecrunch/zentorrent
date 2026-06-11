@@ -8,25 +8,24 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-
 type Config struct {
-	Player        string    `toml:"player"`         // "mpv", "vlc", or "auto"
-	StreamPort    int       `toml:"stream_port"`    // port for video streaming (default 8888)
-	ExtPort       int       `toml:"extension_port"` // port for chrome extension (default 9999)
-	MaxPeers      int       `toml:"max_peers"`      // max peer connections per torrent
-	Notifications bool      `toml:"notifications"`  // enable desktop notifications
-	CacheSizeMB   int       `toml:"cache_size_mb"`  // max temp cache size in MB
-	DownloadDir   string    `toml:"download_dir"`   // directory to save downloaded torrents
-	Subtitles     SubConfig `toml:"subtitles"`
+	Player        string    `toml:"player"`
+	StreamPort    int       `toml:"stream_port"`
+	ExtPort       int       `toml:"extension_port"`
+	MaxPeers      int       `toml:"max_peers"`
+	Notifications bool      `toml:"notifications"`
+	CacheSizeMB   int       `toml:"cache_size_mb"`
+	DownloadDir   string      `toml:"download_dir"`
+	Subtitles     SubConfig   `toml:"subtitles"`
+	Webhooks      []string    `toml:"webhooks"`
+	Theme         string      `toml:"theme"`
 }
-
 
 type SubConfig struct {
-	Language  string `toml:"language"`   // ISO 639-1 language code
-	APIKey    string `toml:"api_key"`    // OpenSubtitles API key
-	AutoFetch bool   `toml:"auto_fetch"` // automatically search for subtitles
+	Language  string `toml:"language"`
+	APIKey    string `toml:"api_key"`
+	AutoFetch bool   `toml:"auto_fetch"`
 }
-
 
 func DefaultConfig() Config {
 	return Config{
@@ -41,25 +40,23 @@ func DefaultConfig() Config {
 			Language:  "en",
 			AutoFetch: true,
 		},
+		Webhooks: []string{},
+		Theme:    "purple",
 	}
 }
-
 
 func configDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "zentorrent")
 }
 
-
 func configPath() string {
 	return filepath.Join(configDir(), "config.toml")
 }
 
-
 func historyPath() string {
 	return filepath.Join(configDir(), "history.json")
 }
-
 
 func LoadConfig() Config {
 	conf := DefaultConfig()
@@ -78,7 +75,6 @@ func LoadConfig() Config {
 	return conf
 }
 
-
 func SaveConfig(conf Config) error {
 	dir := configDir()
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -91,14 +87,13 @@ func SaveConfig(conf Config) error {
 	}
 	defer f.Close()
 
-	fmt.Fprintln(f, "# ZenTorrent v2 Configuration")
-	fmt.Fprintln(f, "# Player options: auto, mpv, vlc")
+	fmt.Fprintln(f, "# ZenTorrent Configuration")
+	fmt.Fprintln(f, "# Player options: auto, mpv, vlc, terminal")
 	fmt.Fprintln(f, "")
 
 	encoder := toml.NewEncoder(f)
 	return encoder.Encode(conf)
 }
-
 
 func PrintConfig(conf Config) {
 	fmt.Println("┌─────────────────────────────────────┐")
@@ -109,7 +104,7 @@ func PrintConfig(conf Config) {
 	fmt.Printf("│  Extension Port:%-20d│\n", conf.ExtPort)
 	fmt.Printf("│  Max Peers:     %-20d│\n", conf.MaxPeers)
 	fmt.Printf("│  Notifications: %-20v│\n", conf.Notifications)
-	
+
 	dir := conf.DownloadDir
 	if len(dir) > 20 {
 		dir = dir[:17] + "..."

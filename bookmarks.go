@@ -13,7 +13,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-
 type BookmarkEntry struct {
 	Title      string    `json:"title"`
 	Magnet     string    `json:"magnet"`
@@ -22,7 +21,6 @@ type BookmarkEntry struct {
 	Seeders    int       `json:"seeders"`
 	AddedAt    time.Time `json:"added_at"`
 }
-
 
 func AddBookmark(entry BookmarkEntry) {
 	entries := loadBookmarks()
@@ -58,7 +56,7 @@ func loadBookmarks() []BookmarkEntry {
 	}
 	var entries []BookmarkEntry
 	json.Unmarshal(data, &entries)
-	
+
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].AddedAt.After(entries[j].AddedAt)
 	})
@@ -69,16 +67,13 @@ func bookmarksPath() string {
 	return configDir() + "/bookmarks.json"
 }
 
-
-
 type bookmarksModel struct {
 	table    table.Model
 	entries  []BookmarkEntry
 	quitting bool
-	action   string // "stream", "download", or ""
+	action   string
 	selected *BookmarkEntry
 }
-
 
 func StartBookmarksTUI() {
 	entries := loadBookmarks()
@@ -129,9 +124,11 @@ func StartBookmarksTUI() {
 
 	if bm, ok := finalModel.(*bookmarksModel); ok && bm.selected != nil {
 		if bm.action == "stream" {
-			StartStreamTUI(bm.selected.Magnet)
+			StartStreamTUI(bm.selected.Magnet, nil, nil)
 		} else if bm.action == "download" {
-			StartDownloadTUI(bm.selected.Magnet)
+			StartDownloadTUI(bm.selected.Magnet, 0)
+		} else if bm.action == "party" {
+			StartPartyTUI(bm.selected.Magnet)
 		}
 	}
 }
@@ -168,9 +165,11 @@ func (m *bookmarksModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "esc", "q", "ctrl+c":
+		case "esc", "q":
 			m.quitting = true
 			return m, tea.Quit
+		case "ctrl+c":
+			os.Exit(0)
 		case "enter":
 			if len(m.entries) > 0 {
 				idx := m.table.Cursor()
@@ -187,6 +186,16 @@ func (m *bookmarksModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if idx >= 0 && idx < len(m.entries) {
 					m.selected = &m.entries[idx]
 					m.action = "download"
+					m.quitting = true
+					return m, tea.Quit
+				}
+			}
+		case "p":
+			if len(m.entries) > 0 {
+				idx := m.table.Cursor()
+				if idx >= 0 && idx < len(m.entries) {
+					m.selected = &m.entries[idx]
+					m.action = "party"
 					m.quitting = true
 					return m, tea.Quit
 				}
@@ -234,7 +243,7 @@ func (m *bookmarksModel) View() string {
 	b.WriteString(tableBox.Render(m.table.View()))
 	b.WriteString("\n\n")
 
-	b.WriteString(footerStyle.Render("  ↑/↓ navigate • enter stream • s download • d delete • q back"))
+	b.WriteString(footerStyle.Render("  ↑/↓ navigate • enter stream • s download • p party • d delete • q back"))
 	b.WriteString("\n")
 
 	return b.String()

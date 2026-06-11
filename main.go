@@ -11,6 +11,20 @@ var appConfig Config
 
 func main() {
 	appConfig = LoadConfig()
+	ApplyTheme(appConfig.Theme)
+
+	if err := InitDHTIndex(); err != nil {
+		fmt.Printf("Warning: Failed to initialize DHT index: %v\n", err)
+	} else {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "DHT indexer crashed: %v\n", r)
+				}
+			}()
+			StartDHTIndexer()
+		}()
+	}
 
 	if len(os.Args) < 2 {
 		StartMainMenu()
@@ -26,7 +40,7 @@ func main() {
 			fmt.Println("Error: Invalid magnet link")
 			os.Exit(1)
 		}
-		StartStreamTUI(magnet)
+		StartStreamTUI(magnet, nil, nil)
 
 	case arg == "search" && len(os.Args) >= 3:
 		query := strings.Join(os.Args[2:], " ")
@@ -57,9 +71,50 @@ func main() {
 		PrintBanner()
 		PrintUsage()
 
+	case arg == "party" && len(os.Args) >= 4:
+		action := os.Args[2]
+		if action == "create" {
+			query := strings.Join(os.Args[3:], " ")
+			cmd := ZsCommand{Title: query}
+			fmt.Printf("Resolving movie for party: %s...\n", query)
+			res, _, err := HeadlessResolve(cmd)
+			if err != nil {
+				fmt.Printf("Failed to resolve movie: %v\n", err)
+				return
+			}
+			isPartyHost = true
+			partyKey = GeneratePartyKey()
+			StartPartyHost(res.Magnet)
+		} else if action == "join" {
+			isPartyJoiner = true
+			StartPartyJoin(os.Args[3])
+		}
+
+	case arg == "export" && len(os.Args) >= 3 && os.Args[2] == "watchlist":
+		out := "watchlist.zs"
+		if len(os.Args) >= 4 {
+			out = os.Args[3]
+		}
+		ExportWatchlistToZenScript(out)
+
+	case arg == "run" && len(os.Args) >= 3:
+		dryRun := false
+		file := os.Args[2]
+		if file == "--dry-run" {
+			dryRun = true
+			if len(os.Args) >= 4 {
+				file = os.Args[3]
+			} else {
+				file = "-"
+			}
+		} else if len(os.Args) >= 4 && os.Args[3] == "--dry-run" {
+			dryRun = true
+		}
+		RunZenScript(file, dryRun)
+
 	default:
 		if strings.HasPrefix(arg, "magnet:") {
-			StartStreamTUI(arg)
+			StartStreamTUI(arg, nil, nil)
 		} else {
 			PrintBanner()
 			fmt.Printf("Unknown command: %s\n\n", arg)

@@ -6,7 +6,6 @@ import (
 	"runtime"
 )
 
-
 func Notify(title, message string) {
 	if !appConfig.Notifications {
 		return

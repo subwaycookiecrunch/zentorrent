@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,6 +16,7 @@ type configModel struct {
 }
 
 var configFields = []string{
+	"Theme",
 	"Player",
 	"Notifications",
 	"Subtitle Lang",
@@ -42,9 +44,11 @@ func (m configModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		m.saved = false
 		switch msg.String() {
-		case "q", "esc", "ctrl+c":
+		case "q", "esc":
 			m.quitting = true
 			return m, tea.Quit
+		case "ctrl+c":
+			os.Exit(0)
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -69,6 +73,16 @@ func (m configModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *configModel) toggleValue(dir int) {
 	field := configFields[m.cursor]
 	switch field {
+	case "Theme":
+		idx := 0
+		for i, t := range themeNames {
+			if t == appConfig.Theme {
+				idx = i
+			}
+		}
+		idx = (idx + dir + len(themeNames)) % len(themeNames)
+		appConfig.Theme = themeNames[idx]
+		ApplyTheme(appConfig.Theme)
 	case "Player":
 		idx := 0
 		for i, p := range players {
@@ -124,6 +138,8 @@ func (m configModel) View() string {
 	for i, field := range configFields {
 		val := ""
 		switch field {
+		case "Theme":
+			val = appConfig.Theme
 		case "Player":
 			val = appConfig.Player
 		case "Notifications":
@@ -161,7 +177,7 @@ func (m configModel) View() string {
 	}
 
 	b.WriteString("\n")
-	
+
 	if m.saved {
 		b.WriteString(lipgloss.NewStyle().Foreground(colorGreen).Render("  ✓ Saved automatically"))
 	} else {

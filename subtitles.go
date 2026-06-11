@@ -43,7 +43,7 @@ func SearchSubtitles(query, lang string) ([]SubtitleResult, error) {
 
 	var result struct {
 		Data []struct {
-			ID         int    `json:"id"`
+			ID         int `json:"id"`
 			Attributes struct {
 				Language string `json:"language"`
 				Release  string `json:"release"`
@@ -124,7 +124,7 @@ func DownloadSubtitle(fileID int) (string, error) {
 
 	vttPath := filepath.Join(tmpDir, "subtitles.vtt")
 	if err := SRTtoVTT(srtPath, vttPath); err != nil {
-		return srtPath, nil // Return SRT if conversion fails
+		return srtPath, nil
 	}
 	return vttPath, nil
 }
@@ -136,7 +136,6 @@ func SRTtoVTT(srtPath, vttPath string) error {
 	}
 
 	content := string(data)
-	// Replace comma with period in timestamps (SRT uses comma, VTT uses period)
 	content = strings.ReplaceAll(content, ",", ".")
 
 	f, err := os.Create(vttPath)

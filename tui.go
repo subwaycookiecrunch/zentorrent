@@ -20,6 +20,7 @@ const (
 	actionHistory
 	actionSources
 	actionSettings
+	actionParty
 	actionQuit
 )
 
@@ -36,6 +37,7 @@ var menuItems = []menuItem{
 	{"⬇️ ", "Download", "Download torrent/magnet to disk", actionDownload},
 	{"📌", "Bookmarks", "View saved watchlist", actionBookmarks},
 	{"📜", "History", "Continue watching recent streams", actionHistory},
+	{"🍿", "ZenParty", "Host or join a watch-together session", actionParty},
 	{"⚙ ", "Config", "View & edit current settings", actionSettings},
 	{"✕ ", "Quit", "Exit ZenTorrent", actionQuit},
 }
@@ -103,7 +105,7 @@ type menuModel struct {
 	cursor    int
 	action    menuAction
 	quitting  bool
-	inputMode string // "" = menu, "search", "stream", "download"
+	inputMode string
 	textInput textinput.Model
 	query     string
 	uri       string
@@ -121,36 +123,43 @@ func newMenuModel() menuModel {
 }
 
 func StartMainMenu() {
-	m := newMenuModel()
-	p := tea.NewProgram(m)
-	finalModel, err := p.Run()
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
+	for {
+		m := newMenuModel()
+		p := tea.NewProgram(m)
+		finalModel, err := p.Run()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			return
+		}
 
-	fm := finalModel.(menuModel)
+		fm := finalModel.(menuModel)
 
-	switch fm.action {
-	case actionSearch:
-		if fm.query != "" {
-			StartSearchTUI(fm.query)
+		switch fm.action {
+		case actionSearch:
+			if fm.query != "" {
+				StartSearchTUI(fm.query)
+			}
+		case actionStream:
+			if fm.uri != "" {
+				StartStreamTUI(fm.uri, nil, nil)
+			}
+		case actionDownload:
+			if fm.uri != "" {
+				StartDownloadTUI(fm.uri, 0)
+			}
+		case actionBookmarks:
+			StartBookmarksTUI()
+		case actionHistory:
+			StartHistoryTUI()
+		case actionParty:
+			StartPartyTUI("")
+		case actionSettings:
+			StartConfigTUI()
+		case actionQuit:
+			return
+		default:
+			return
 		}
-	case actionStream:
-		if fm.uri != "" {
-			StartStreamTUI(fm.uri)
-		}
-	case actionDownload:
-		if fm.uri != "" {
-			StartDownloadTUI(fm.uri)
-		}
-	case actionBookmarks:
-		StartBookmarksTUI()
-	case actionHistory:
-		StartHistoryTUI()
-	case actionSettings:
-		StartConfigTUI()
-	case actionQuit:
 	}
 }
 
@@ -226,7 +235,7 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.SetValue("")
 				m.textInput.Focus()
 				return m, textinput.Blink
-			case actionBookmarks, actionHistory, actionSettings:
+			case actionBookmarks, actionHistory, actionSettings, actionParty:
 				m.action = item.action
 				m.quitting = true
 				return m, tea.Quit

@@ -10,13 +10,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/net/html"
 )
 
 var httpClient = &http.Client{Timeout: 8 * time.Second}
 
 func searchTPB(ctx context.Context, q string) ([]Result, error) {
-	u := "https://apibay.org/q.php?q=" + url.QueryEscape(q)
-	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET",
+		"https://apibay.org/q.php?q="+url.QueryEscape(q), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +39,7 @@ func searchTPB(ctx context.Context, q string) ([]Result, error) {
 	}
 	json.NewDecoder(resp.Body).Decode(&items)
 
-	var res []Result
+	res := make([]Result, 0, len(items))
 	for _, it := range items {
 		if it.InfoHash == "0000000000000000000000000000000000000000" {
 			continue
@@ -46,12 +48,22 @@ func searchTPB(ctx context.Context, q string) ([]Result, error) {
 		if seeds == 0 {
 			continue
 		}
+		sizeBytes, _ := strconv.ParseInt(it.Size, 10, 64)
 		mag := fmt.Sprintf("magnet:?xt=urn:btih:%s&dn=%s", it.InfoHash, url.QueryEscape(it.Name))
+		cat := "Other"
+		switch it.Category {
+		case "201", "202", "207", "209", "211":
+			cat = "Movies"
+		case "205", "208", "212":
+			cat = "TV Shows"
+		}
 		res = append(res, Result{
 			Title:      it.Name,
 			Magnet:     mag,
 			Resolution: parseRes(it.Name),
 			Seeders:    seeds,
+			Size:       formatSizeBytes(sizeBytes),
+			Category:   cat,
 			Source:     "tpb",
 		})
 	}
@@ -65,7 +77,6 @@ func searchEZTV(ctx context.Context, q string) ([]Result, error) {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0")
-
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -101,6 +112,7 @@ func searchEZTV(ctx context.Context, q string) ([]Result, error) {
 		if mag == "" {
 			continue
 		}
+
 		ep := 0
 		if t.Episode != "" {
 			ep, _ = strconv.Atoi(t.Episode)
@@ -110,6 +122,7 @@ func searchEZTV(ctx context.Context, q string) ([]Result, error) {
 			Magnet:     mag,
 			Resolution: parseRes(t.Title),
 			Seeders:    t.Seeds,
+			Category:   "TV Shows",
 			Source:     "eztv",
 			Episode:    ep,
 		})
@@ -165,6 +178,7 @@ func searchSubsPlease(ctx context.Context, q string) ([]Result, error) {
 			Magnet:     mag,
 			Resolution: parseRes(item.Title),
 			Seeders:    50,
+			Category:   "Anime",
 			Source:     "subsplease",
 			Episode:    parseEp(item.Title),
 		})
@@ -178,7 +192,6 @@ func searchNyaaRSS(ctx context.Context, q string) ([]Result, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -203,18 +216,75 @@ func searchNyaaRSS(ctx context.Context, q string) ([]Result, error) {
 	var res []Result
 	for _, item := range feed.Channel.Items {
 		seeds, _ := strconv.Atoi(item.Seeders)
-		mag := item.Link
-		if !strings.HasPrefix(mag, "magnet:") {
-			continue
+		if mag := item.Link; strings.HasPrefix(mag, "magnet:") {
+			res = append(res, Result{
+				Title:      item.Title,
+				Magnet:     mag,
+				Resolution: parseRes(item.Title),
+				Seeders:    seeds,
+				Category:   "Anime",
+				Source:     "nyaa",
+				Episode:    parseEp(item.Title),
+			})
 		}
-		res = append(res, Result{
-			Title:      item.Title,
-			Magnet:     mag,
-			Resolution: parseRes(item.Title),
-			Seeders:    seeds,
-			Source:     "nyaa",
-			Episode:    parseEp(item.Title),
-		})
 	}
 	return res, nil
+}
+
+func searchBTDig(ctx context.Context, q string) ([]Result, error) {
+	u := "https://btdig.com/search?q=" + url.QueryEscape(q) + "&order=0"
+	req, _ := http.NewRequestWithContext(ctx, "GET", u, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	doc, _ := html.Parse(resp.Body)
+
+	var res []Result
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "div" && getAttr(n, "class") == "one_result" {
+			titleNode := findClass(n, "torrent_name")
+			magnetNode := findClass(n, "torrent_magnet")
+			if titleNode != nil && magnetNode != nil {
+				aTitle := find(titleNode, "a")
+				aMag := find(magnetNode, "a")
+				if aTitle != nil && aMag != nil {
+					t := getTxt(aTitle)
+					m := getAttr(aMag, "href")
+					if t != "" && strings.HasPrefix(m, "magnet:") {
+						res = append(res, Result{
+							Title:      t,
+							Magnet:     m,
+							Source:     "btdig",
+							Category:   guessCategory(t),
+							Resolution: parseRes(t),
+							Seeders:    10,
+						})
+					}
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(doc)
+
+	return res, nil
+}
+
+func findClass(n *html.Node, class string) *html.Node {
+	if n.Type == html.ElementNode && getAttr(n, "class") == class {
+		return n
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if res := findClass(c, class); res != nil {
+			return res
+		}
+	}
+	return nil
 }

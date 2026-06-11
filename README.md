@@ -1,46 +1,63 @@
-# zentorrent
+# ZenTorrent
 
-a blazing fast, minimalist terminal torrent client and streamer. 
+A terminal client for streaming torrents directly to your media player (MPV or VLC). 
 
-zentorrent drops bloated web UIs and heavy electron apps in favor of a gorgeous, keyboard-driven terminal interface. paste a magnet link or `.torrent` file, and it aggressively prioritizes piece metadata to instantly stream video to your native player (VLC or MPV) without waiting for the download to finish. 
+Instead of waiting for a download to finish, ZenTorrent runs a local HTTP server, prioritizes the first few pieces of the torrent, and pipes it straight to your player. You start watching in seconds.
 
-or just use it as a standard client and download straight to disk.
+## Features
 
-## features
-- **instant streaming**: prioritizes the first 5% of video chunks to launch VLC/MPV immediately.
-- **download mode**: download entire torrents to disk with a clean animated progress dashboard.
-- **interactive search**: query popular trackers directly from your terminal.
-- **bookmarks & history**: save things for later or pick up where you left off.
-- **keyboard-driven**: built with charmbracelet's bubbletea for a buttery smooth TUI.
-- **subtitles**: auto-fetches subtitles in the background.
+- **Fast Streaming**: Aggressive piece prioritization to get video playing instantly.
+- **Concurrent Search**: Scrapes YTS, 1337x, TPB, Nyaa, EZTV, and SubsPlease simultaneously.
+- **Smart Playlists**: Zero-buffering transitions. It automatically pre-buffers the next queue item in the background when the current stream hits 80%.
+- **ZenParty**: Synchronized watch parties with friends. Runs over public `ntfy.sh` channels using MPV's local IPC socket (no registration or hosting required).
+- **ZenScript**: Automation scripts (`.zs` files) to queue up searches and streams.
+- **Offline Search**: Passive DHT crawler that indexes metainfo into a local SQLite database.
+- **Extras**: Auto-subtitles (OpenSubtitles), Discord/Slack webhooks, and themes (Gruvbox, Nord, Catppuccin, Dracula, etc.).
 
-## installation
+## Install
 
-### the easiest way (mac & linux)
+Requires **MPV** (preferred) or **VLC** to be installed on your system.
+
 ```bash
+# macOS / Linux one-liner
 curl -sSL https://raw.githubusercontent.com/subwaycookiecrunch/zentorrent/main/install.sh | bash
-```
 
-### windows & pre-compiled binaries
-grab the latest `.exe` (windows) or binary (mac/linux) from the [Releases page](https://github.com/subwaycookiecrunch/zentorrent/releases). put it somewhere in your `PATH` and you're good to go.
-
-### build from source
-if you have Go installed, this will compile and place the binary in your `GOPATH`:
-```bash
+# Or build from source
 go install github.com/subwaycookiecrunch/zentorrent@latest
 ```
 
-## usage
+Pre-built binaries are available on the [releases page](https://github.com/subwaycookiecrunch/zentorrent/releases).
 
-just type `zentorrent` in your terminal to launch the interactive menu.
+## Usage
 
-from there you can:
-- **Search** to find something to watch
-- **Stream** to paste a magnet link or `/path/to/file.torrent`
-- **Download** to save files directly to your machine
-- **Config** to configure your preferred player, subtitles, and download directories
+Just run `zentorrent` to launch the interactive TUI. 
 
-## under the hood
-- runs a local HTTP server that serves the actively buffering piece stream.
-- binds directly to `anacrolix/torrent` for lightning-fast peer discovery and DHT routing.
-- reprioritizes torrent pieces dynamically based on playback position so the stream never stutters.
+Alternatively, use commands directly:
+
+```
+zentorrent search "query"     Search and stream a result
+zentorrent stream <magnet>    Stream a magnet link
+zentorrent history            Show recent streams
+zentorrent config             Print active configuration
+zentorrent status             Check background server status
+zentorrent run script.zs      Run a playlist script
+```
+
+### ZenScript Example
+
+Create a `.zs` file to queue up streams:
+```
+watch "inception" quality:1080p
+watch "breaking bad" S01E01
+watch "one piece" source:nyaa quality:1080p
+```
+
+## How it works
+
+ZenTorrent mounts the torrent as a seekable HTTP stream. It connects to MPV over a UNIX socket (`/tmp/zt_mpv.sock`) to track playback position in real-time. The Go backend uses `anacrolix/torrent` and dynamically shifts piece priority: blocks ahead of the playhead get high priority, while blocks you've already watched are deprioritized. 
+
+If your speed drops below a threshold, the arbiter system hot-swaps to a fallback source or lower resolution without interrupting the player.
+
+## License
+
+MIT

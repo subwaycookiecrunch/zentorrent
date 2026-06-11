@@ -3,37 +3,30 @@ name: Release
 on:
   push:
     tags:
-      - 'v*' # Triggers when a new version tag is pushed (e.g., v2.0.0)
+      - 'v*'
 
 jobs:
   build:
-    name: Build & Publish Release
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Needed to create GitHub Releases
+      contents: write
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.22' # Use your Go version
+          go-version: '1.22'
 
-      - name: Build Binaries
+      - name: Build
         run: |
           mkdir -p dist
-          # Windows
           GOOS=windows GOARCH=amd64 go build -o dist/zentorrent-windows-amd64.exe .
-          # Mac (Intel)
           GOOS=darwin GOARCH=amd64 go build -o dist/zentorrent-darwin-amd64 .
-          # Mac (Apple Silicon)
           GOOS=darwin GOARCH=arm64 go build -o dist/zentorrent-darwin-arm64 .
-          # Linux
           GOOS=linux GOARCH=amd64 go build -o dist/zentorrent-linux-amd64 .
 
-      - name: Create GitHub Release
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*

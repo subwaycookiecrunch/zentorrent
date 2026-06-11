@@ -5,3 +5,5 @@
 zentorrent
 zentorrent.exe
 dist/
+*.patch
+.qoder/
