@@ -2,8 +2,12 @@
 *.iso
 *.torrent
 .torrent.bolt.db
-zentorrent
+# Anchor to repo root: a bare "zentorrent" also matched the cmd/zentorrent/
+# source directory and silently dropped the whole TUI package from git.
+/zentorrent
+cmd/zentorrent/zentorrent
 zentorrent.exe
-dist/
+# Keep internal/web/dist/ tracked — index.html is go:embed-ed into the binary.
+/dist/
 *.patch
 .qoder/

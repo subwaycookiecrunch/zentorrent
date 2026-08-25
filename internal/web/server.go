@@ -120,6 +120,9 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "search already running", http.StatusTooManyRequests)
 		return
 	}
+	// Drop the previous search's results up front so /api/results reports
+	// ready:false instead of serving the old movie's rows as the new query runs.
+	s.lastResult.Store((*search.DiscoveryResult)(nil))
 	go func() {
 		defer s.searchLock.Unlock()
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

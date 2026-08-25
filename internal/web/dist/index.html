@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZenTorrent</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<style>
+  :root { --bg:#0b0b10; --card:#16161f; --line:#26262f; --txt:#e4e4e7;
+          --dim:#8b8b96; --acc:#7c3aed; --cyan:#06b6d4; --green:#10b981; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt);
+         font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+         padding:16px; max-width:980px; margin:0 auto; }
+  h1 { font-size:20px; color:var(--acc); letter-spacing:.5px; }
+  .sub { color:var(--dim); font-size:12px; margin-bottom:14px; }
+  #q { width:100%; padding:12px 14px; font-size:16px; border-radius:10px;
+       border:1px solid var(--line); background:var(--card); color:var(--txt); outline:none; }
+  #pills { margin:8px 0; }
+  .pill { display:inline-block; margin:2px 4px 2px 0; padding:3px 10px;
+          border-radius:999px; background:var(--card); color:var(--cyan);
+          border:1px solid var(--line); cursor:pointer; font-size:13px; }
+  .movie { margin:14px 0 6px; }
+  .movie b { font-size:17px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px;
+           font-weight:700; margin-right:4px; vertical-align:middle; }
+  .b-debrid { background:#052e16; color:var(--green); }
+  .b-p2p    { background:#1e1b4b; color:#a78bfa; }
+  .b-hls    { background:#082f49; color:var(--cyan); }
+  .row { display:flex; gap:10px; align-items:center; background:var(--card);
+         border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; }
+  .row .t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .m { color:var(--dim); font-size:12px; white-space:nowrap; }
+  button { border:0; border-radius:8px; padding:7px 12px; font-weight:700; cursor:pointer; }
+  .play { background:var(--acc); color:#fff; }
+  .web  { background:var(--line); color:var(--txt); }
+  #player { width:100%; max-height:60vh; border-radius:12px; background:#000; margin-top:12px; }
+  #player.off { display:none; }
+  #status { position:fixed; bottom:8px; right:12px; color:var(--dim); font-size:11px; }
+  .empty { color:var(--dim); text-align:center; padding:30px 0; }
+</style>
+</head>
+<body>
+  <h1>⚡ ZenTorrent</h1>
+  <div class="sub">hybrid streaming · debrid / p2p / hls · from any device on this network</div>
+
+  <input id="q" placeholder="Movie or show… typos welcome" autocomplete="off">
+  <div id="pills"></div>
+  <div id="movie"></div>
+  <div id="results"><div class="empty">Search to begin</div></div>
+  <video id="player" class="off" controls playsinline></video>
+  <div id="status">connecting…</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let searchTimer=null, tierCache={};
+
+// One delegated click handler for every dynamic button; values travel through
+// data-* attributes, so titles/magnets containing quotes can't break out of
+// inline onclick strings.
+document.body.addEventListener('click', e=>{
+  const b = e.target.closest('[data-act]');
+  if(!b) return;
+  const act = b.dataset.act;
+  if(act==='pill')        pick(b.dataset.q);
+  else if(act==='tiers')  openTiers(+b.dataset.i);
+  else if(act==='p2p')    { const r=window.__rows?.[+b.dataset.i]; if(r) streamMagnet(r.magnet); }
+  else if(act==='hls')    { const s=window.__tiers?.[+b.dataset.i]; if(s) playHLS(s.url); }
+  else if(act==='direct') { const s=window.__tiers?.[+b.dataset.i]; if(s) playDirect(s.url); }
+  else if(act==='mpv')    { const s=window.__tiers?.[+b.dataset.i]; if(s) desktopPlay(s); }
+  else if(act==='back')   restoreResults();
+});
+
+$('q').addEventListener('input', e=>{
+  const q=e.target.value.trim();
+  clearTimeout(searchTimer);
+  if(!q){ $('pills').innerHTML=''; return; }
+  searchTimer=setTimeout(()=>jfetch('/api/suggest?q='+encodeURIComponent(q))
+    .then(items=>{
+      $('pills').innerHTML=(items||[]).map(i=>
+        `<span class="pill" data-act="pill" data-q="${escAttr(i.title + (i.year?' ('+i.year+')':''))}">${esc(i.title)}${i.year?' ('+i.year+')':''}</span>`).join('');
+    }).catch(()=>{}), 120);
+});
+$('q').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && e.target.value.trim()) runSearch(e.target.value.trim());
+});
+
+async function jfetch(url, opts){
+  const r = await fetch(url, opts);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+function setPane(msg){ $('results').innerHTML = `<div class="empty">${esc(msg)}</div>`; }
+
+function pick(t){
+  $('q').value=t; $('pills').innerHTML=''; runSearch(t);
+}
+
+function runSearch(q){
+  $('player').classList.add('off');
+  setPane('searching…');
+  jfetch('/api/search?q='+encodeURIComponent(q))
+    .then(()=>pollResults(0))
+    .catch(err=>setPane('search failed to start ('+err.message+')'));
+}
+
+function pollResults(n){
+  if(n>60){ setPane('search timed out — try again'); return; }
+  jfetch('/api/results').then(d=>{
+    if(!d.ready) return setTimeout(()=>pollResults(n+1),800);
+    renderResults(d);
+  }).catch(()=>setTimeout(()=>pollResults(n+1),800));
+}
+
+function renderResults(d){
+  $('movie').innerHTML = d.movie && d.movie.title
+    ? `<div class="movie"><b>${esc(d.movie.title)}</b>${d.movie.year?' ('+d.movie.year+')':''}</div>` : '';
+  // Remember the resolved IDs so tier resolution can use them (tmdb=0 means
+  // the HLS extractor layer has nothing to key on).
+  $('movie').dataset.m = JSON.stringify(d.movie||{});
+  window.__rows = d.results||[];
+  window.__resultsHTML = null;
+  const rows=window.__rows.slice(0,25);
+  if(!rows.length){ setPane('no results — try another spelling'); return; }
+  $('results').innerHTML=rows.map((r,i)=>`
+    <div class="row">
+      <div class="t">${esc(r.title)}<br>
+        <span class="m">${fmtSize(r.size)} · ${r.seeders<0?'? seeds':r.seeders+' seeds'} · ${tierBadge(r.source)}</span></div>
+      <button class="play" data-act="tiers" data-i="${i}">Tiers</button>
+      <button class="web" data-act="p2p" data-i="${i}">P2P ▶</button>
+    </div>`).join('');
+}
+
+function rememberResults(){ window.__resultsHTML = $('results').innerHTML; }
+
+function restoreResults(){
+  if(window.__resultsHTML){ $('results').innerHTML = window.__resultsHTML; window.__resultsHTML=null; }
+}
+
+async function openTiers(i){
+  const r=window.__rows[i];
+  setPane('resolving tiers…');
+  try{
+    const res=await jfetch('/api/tiers',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({title:r.title,magnet:r.magnet,info_hash:r.info_hash,
+                           tmdb:currentTMDB(),imdb:currentIMDB(),best_seeders:r.seeders})});
+    rememberResults();
+    const list=(res||[]).map((s,idx)=>{
+      const cls=s.type==='debrid'?'b-debrid':s.type==='hls'?'b-hls':'b-p2p';
+      return `<div class="row">
+        <span class="badge ${cls}">${s.type.toUpperCase()}</span>
+        <div class="t">${esc(s.provider)} · ${esc(s.quality||'')}<br><span class="m">${esc(s.title)}</span></div>
+        ${s.type==='hls'?`<button class="play" data-act="hls" data-i="${idx}">Watch here</button>`:''}
+        ${s.url&&s.url.startsWith('http')&&!s.url.includes('.m3u8')?`<button class="web" data-act="direct" data-i="${idx}">Browser ▶</button>`:''}
+        <button class="web" data-act="mpv" data-i="${idx}">MPV</button>
+      </div>`;}).join('');
+    window.__tiers=res||[];
+    $('results').innerHTML =
+      `<div class="row"><button class="web" data-act="back">‹ back to results</button></div>` +
+      (list||'<div class="empty">no tiers resolved</div>');
+  }catch(err){
+    restoreResults();
+    setPane('tier lookup failed ('+err.message+')');
+    window.__resultsHTML=null;
+  }
+}
+
+function movieMeta(){ try{ return JSON.parse($('movie').dataset.m||'{}'); }catch(e){ return {}; } }
+function currentTMDB(){ return movieMeta().tmdb||0; }
+function currentIMDB(){ return movieMeta().imdb||''; }
+
+function showPlayer(v){ v.classList.remove('off'); v.scrollIntoView({behavior:'smooth'}); }
+
+function playHLS(url){
+  const v=$('player');
+  if(window.__hls){ window.__hls.destroy(); window.__hls=null; }
+  // hls.js loads from a CDN; offline / LAN-only clients must fall back cleanly.
+  if(window.Hls && Hls.isSupported()){
+    window.__hls=new Hls(); window.__hls.loadSource(url); window.__hls.attachMedia(v);
+    window.__hls.on(Hls.Events.MANIFEST_PARSED,()=>{ showPlayer(v); v.play(); });
+    window.__hls.on(Hls.Events.ERROR,(ev,data)=>{ if(data.fatal) setPane('HLS playback failed — try the desktop player'); });
+  } else {
+    v.src=url; showPlayer(v); v.play(); // Safari native HLS
+  }
+}
+
+function playDirect(url){ const v=$('player'); v.src=url; showPlayer(v); v.play(); }
+
+async function streamMagnet(magnet){
+  try{
+    const tiers=await jfetch('/api/tiers',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({magnet})});
+    const d=(tiers||[]).find(s=>s.type==='debrid' && s.url && !s.url.includes('.m3u8'));
+    if(d) return playDirect(d.url);
+    alert('Not cached on debrid — starting P2P in desktop player.');
+    desktopPlayMagnet(magnet);
+  }catch(err){
+    setPane('could not resolve stream ('+err.message+')');
+  }
+}
+
+function desktopPlay(src){ jfetch('/api/play',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(src)}).catch(()=>{}); }
+function desktopPlayMagnet(m){ desktopPlay({type:'torrent',url:'',magnet:m,title:'P2P',provider:'P2P'}); }
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function escAttr(s){return esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function fmtSize(n){return n>=1<<30?(n/(1<<30)).toFixed(2)+' GB':n>=1<<20?(n/(1<<20)).toFixed(1)+' MB':n+' B';}
+function tierBadge(src){
+  const s=(src||'').toLowerCase();
+  if(s.includes('+')) return '<span class="badge b-p2p">MULTI</span>';
+  return '<span class="badge b-p2p">[P2P]</span>';
+}
+
+const ws=new WebSocket(`ws://${location.host}/ws`);
+ws.onopen=()=>$('status').textContent='live';
+ws.onerror=()=>$('status').textContent='offline';
+ws.onmessage=e=>{
+  try{ const st=JSON.parse(e.data);
+    if(st && st.status) $('status').textContent=`${st.status} · ${st.speed_fmt||''} · ${st.peers||0} peers`;
+  }catch(_){}
+};
+</script>
+</body>
+</html>
