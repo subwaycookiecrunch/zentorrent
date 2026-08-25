@@ -1,4 +1,4 @@
-package main
+package streamer
 
 import (
 	"bufio"
@@ -9,7 +9,10 @@ import (
 	"time"
 )
 
-const ipcSocketPath = "/tmp/zt_mpv.sock"
+const mpvSocketPath = "/tmp/zt_mpv.sock"
+
+// Re-exported socket path for callers that pre-remove stale sockets.
+const MPVSocketPath = mpvSocketPath
 
 var (
 	ipcConn net.Conn
@@ -26,7 +29,7 @@ func connectIPC() error {
 
 	var err error
 	for i := 0; i < 10; i++ {
-		ipcConn, err = net.Dial("unix", ipcSocketPath)
+		ipcConn, err = net.Dial("unix", mpvSocketPath)
 		if err == nil {
 			return nil
 		}

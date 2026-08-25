@@ -1,4 +1,6 @@
-package main
+// Package streamer launches desktop players (MPV IPC / VLC) and probes
+// the local VOD endpoint.
+package streamer
 
 import (
 	"fmt"
@@ -8,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -19,8 +22,12 @@ const (
 	PlayerAuto PlayerType = "auto"
 )
 
+// PreferredPlayer is set once at startup from configuration ("auto", "mpv",
+// "vlc"); DetectPlayer consults it instead of reaching into app state.
+var PreferredPlayer = "auto"
+
 func DetectPlayer() PlayerType {
-	pref := appConfig.Player
+	pref := PreferredPlayer
 	if pref != "" && pref != "auto" {
 		return PlayerType(pref)
 	}
@@ -68,7 +75,7 @@ func LaunchPlayer(streamURL string, subtitlePath string, startTimeSec int) (*exe
 	}
 }
 
-func checkStream(url string) bool {
+func CheckStream(url string) bool {
 	readyURL := strings.Replace(url, "/stream", "/ready", 1)
 	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(readyURL)
@@ -83,28 +90,35 @@ func playerAlive(cmd *exec.Cmd) bool {
 	if cmd == nil || cmd.Process == nil {
 		return false
 	}
-	for i := 0; i < 50; i++ {
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
 		time.Sleep(100 * time.Millisecond)
 		if cmd.ProcessState != nil {
 			return false
+		}
+		if runtime.GOOS != "windows" {
+			if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
+				return false
+			}
 		}
 	}
 	return true
 }
 
 func launchMPV(streamURL, subtitlePath string, startTimeSec int) (*exec.Cmd, error) {
-	os.Remove("/tmp/zt_mpv.sock")
+	os.Remove(MPVSocketPath)
 
 	args := []string{
 		streamURL,
 		"--cache=yes",
 		"--demuxer-max-bytes=500MiB",
 		"--demuxer-max-back-bytes=100MiB",
-		"--cache-secs=10",
+		"--cache-secs=60",
+		"--demuxer-readahead-secs=30",
 		"--network-timeout=120",
 		"--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=5",
 		"--title=ZenTorrent",
-		"--input-ipc-server=/tmp/zt_mpv.sock",
+		"--input-ipc-server=" + MPVSocketPath,
 		"--really-quiet",
 	}
 	if startTimeSec > 0 {
@@ -162,8 +176,8 @@ func launchVLC(streamURL, subtitlePath string, startTimeSec int) (*exec.Cmd, err
 
 	args := []string{
 		streamURL,
-		"--network-caching=30000",
-		"--file-caching=1000",
+		"--network-caching=3000",
+		"--file-caching=3000",
 		"--disc-caching=1000",
 		"--live-caching=1000",
 		"--prefetch-buffer-size=131072",
