@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZenTorrent — Stream any torrent instantly in terminal or browser</title>
+<meta name="description" content="A lightweight, single-binary media engine in Go. Stream torrents with real-time dialogue clarity EQ, watch parties, floating mini-player, and zero buffering.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg-base: #070709;
+    --bg-surface: #0f0f14;
+    --bg-card: rgba(255, 255, 255, 0.03);
+    --bg-card-hover: rgba(255, 255, 255, 0.06);
+    --accent: #8b5cf6;
+    --accent-glow: rgba(139, 92, 246, 0.35);
+    --accent-light: #a78bfa;
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(139, 92, 246, 0.4);
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Ambient Backdrop Glow */
+  .glow-mesh {
+    position: fixed;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 1000px;
+    height: 550px;
+    background: radial-gradient(circle at 50% 10%, rgba(139, 92, 246, 0.18), rgba(56, 189, 248, 0.08), transparent 70%);
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Navigation */
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 70px;
+    background: rgba(7, 7, 9, 0.75);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    z-index: 100;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-weight: 800;
+    font-size: 17px;
+    letter-spacing: -0.5px;
+  }
+  .nav-logo-badge {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #8b5cf6, #6366f1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    color: #fff;
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .nav-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: color 0.15s ease;
+  }
+  .nav-link:hover { color: var(--text-primary); }
+
+  .btn-star {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .btn-star:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  /* Hero Section */
+  .hero-section {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 140px auto 40px;
+    padding: 0 24px;
+    text-align: center;
+  }
+  .release-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--accent-light);
+    margin-bottom: 24px;
+  }
+  .release-pill-dot {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #10b981;
+  }
+  h1 {
+    font-size: clamp(38px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 20px;
+    background: linear-gradient(180deg, #ffffff 30%, #a1a1aa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-subtitle {
+    font-size: clamp(16px, 2.2vw, 19px);
+    color: var(--text-secondary);
+    max-width: 680px;
+    margin: 0 auto 36px;
+    font-weight: 400;
+  }
+
+  /* Action Buttons */
+  .hero-cta-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  .btn-primary-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    color: #ffffff;
+    font-size: 14.5px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 8px 30px var(--accent-glow);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-primary-download:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.55);
+  }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 24px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 14.5px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Quick Install Snippet */
+  .install-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #0d0d12;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #c4b5fd;
+    max-width: 90vw;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .install-box:hover {
+    border-color: var(--accent);
+    background: #111118;
+  }
+  .install-prompt { color: var(--text-muted); }
+  .copy-btn-icon {
+    color: var(--text-muted);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Showcase Visuals */
+  .showcase-container {
+    max-width: 1000px;
+    margin: 60px auto 100px;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+  .terminal-window {
+    background: #0a0a0f;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.85);
+  }
+  .terminal-header {
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .terminal-dots {
+    display: flex;
+    gap: 6px;
+  }
+  .terminal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #27272a;
+  }
+  .terminal-body {
+    padding: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: #e4e4e7;
+    overflow-x: auto;
+  }
+  .t-cyan { color: #38bdf8; }
+  .t-purple { color: #a78bfa; }
+  .t-green { color: #34d399; }
+  .t-yellow { color: #fbbf24; }
+  .t-dim { color: #71717a; }
+
+  /* Features Grid */
+  .features-section {
+    max-width: 1000px;
+    margin: 0 auto 120px;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+  .section-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .section-header h2 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    margin-bottom: 12px;
+  }
+  .section-header p {
+    color: var(--text-secondary);
+    font-size: 15.5px;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    transition: all 0.25s ease;
+  }
+  .feature-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    transform: translateY(-3px);
+  }
+  .feature-icon {
+    font-size: 24px;
+    margin-bottom: 16px;
+    display: inline-block;
+  }
+  .feature-card h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #ffffff;
+  }
+  .feature-card p {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 32px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    position: relative;
+    z-index: 1;
+  }
+  footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+  footer a:hover { color: var(--text-primary); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #18181b;
+    border: 1px solid var(--border-hover);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 200;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="glow-mesh"></div>
+
+<!-- Header -->
+<header>
+  <a href="#" class="nav-brand">
+    <div class="nav-logo-badge">Z</div>
+    <span>ZenTorrent</span>
+  </a>
+  <div class="nav-links">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="https://github.com/subwaycookiecrunch/zentorrent/releases" class="nav-link" target="_blank">Releases</a>
+    <a href="https://github.com/subwaycookiecrunch/zentorrent" class="btn-star" target="_blank">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      <span>Star on GitHub</span>
+    </a>
+  </div>
+</header>
+
+<!-- Hero Section -->
+<section class="hero-section">
+  <div class="release-pill">
+    <span class="release-pill-dot"></span>
+    <span>ZenTorrent v4.0.0 is Live</span>
+  </div>
+  <h1>Stream any torrent instantly.<br>In terminal or browser.</h1>
+  <p class="hero-subtitle">
+    A lightweight, single-binary media engine in Go. Real-time audio dialogue boost, watch parties, floating mini-player, and zero buffering.
+  </p>
+
+  <div class="hero-cta-group">
+    <a id="btn-detected-download" href="https://github.com/subwaycookiecrunch/zentorrent/releases/tag/v4.0.0" class="btn-primary-download" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      <span id="download-text">Download for macOS</span>
+    </a>
+    <a href="https://github.com/subwaycookiecrunch/zentorrent" class="btn-secondary" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+      <span>View Source</span>
+    </a>
+  </div>
+
+  <div>
+    <div class="install-box" onclick="copyInstallCmd()">
+      <span class="install-prompt">$</span>
+      <span id="cmd-snippet">curl -sSL https://raw.githubusercontent.com/subwaycookiecrunch/zentorrent/main/install.sh | bash</span>
+      <span class="copy-btn-icon" id="copy-icon">📋</span>
+    </div>
+  </div>
+</section>
+
+<!-- Terminal Showcase -->
+<div class="showcase-container">
+  <div class="terminal-window">
+    <div class="terminal-header">
+      <div class="terminal-dots">
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+        <div class="terminal-dot"></div>
+      </div>
+      <span style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);">zentorrent v4.0.0</span>
+      <div style="width: 30px;"></div>
+    </div>
+    <div class="terminal-body">
+      <div><span class="t-dim">$</span> <span class="t-cyan">zentorrent search</span> <span class="t-yellow">"Interstellar 4K"</span></div>
+      <div class="t-dim">> Initializing BitTorrent engine & scraping 54 Tier-1 DHT trackers...</div>
+      <div class="t-green">✔ Found: Interstellar.2014.2160p.UHD.HDR.Dolby.Atmos (1,188 Seeders • 24.5 GB)</div>
+      <div class="t-purple">> Buffering head & tail pieces [████████████████████] 100% Ready (8ms)</div>
+      <div><span class="t-dim">> Stream launched:</span> <span class="t-cyan">http://localhost:8888</span> <span class="t-dim">(Audio EQ: Dialogue Boost Enabled)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Features Section -->
+<section class="features-section" id="features">
+  <div class="section-header">
+    <h2>Engineered for pure speed.</h2>
+    <p>Everything you need for seamless streaming packed into a single Go binary.</p>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🎧</div>
+      <h3>Dialogue Clarity & Audio EQ</h3>
+      <p>Real-time Web Audio DSP inside the player. Lifts whispered dialogue and smooths loud explosion spikes with 6 custom audio presets.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Swarm Turbo Tracker Injection</h3>
+      <p>Automatically injects 50+ live public Tier-1 BitTorrent trackers on the fly to maximize download speed and find seeders for rare torrents.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🖼️</div>
+      <h3>Floating Mini-Player (PiP)</h3>
+      <p>Press <code>I</code> to pop the stream into a floating corner player so you can browse other movies or search without interrupting playback.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🍿</div>
+      <h3>Watch Party Synchronization</h3>
+      <p>Host watch rooms with sub-millisecond playback sync, room PINs, live chat, floating reaction emojis, and shared playlist queues.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>Zero-Cost Private Tunnel</h3>
+      <p>Run <code>zentorrent watchonline</code> to generate a private HTTPS session link for your phone, iPad, or TV with zero port forwarding.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <h3>Unified Multi-Tier Search</h3>
+      <p>Seamlessly queries Debrid caching (Real-Debrid, TorBox), live P2P torrent swarms (1337x, YTS, TorrentGalaxy, Nyaa), and direct HLS.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div style="margin-bottom: 12px;">
+    <a href="https://github.com/subwaycookiecrunch/zentorrent" target="_blank">GitHub</a> • 
+    <a href="https://github.com/subwaycookiecrunch/zentorrent/releases" target="_blank">Releases</a> • 
+    <a href="https://github.com/subwaycookiecrunch/zentorrent/blob/main/LICENSE" target="_blank">MIT License</a>
+  </div>
+  <div>ZenTorrent v4.0.0 • Open source & built with Go</div>
+</footer>
+
+<div class="toast" id="toast">📋 Copied to clipboard!</div>
+
+<script>
+  // Detect OS for 1-Click Download
+  (function() {
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const btn = document.getElementById('btn-detected-download');
+    const txt = document.getElementById('download-text');
+    const base = 'https://github.com/subwaycookiecrunch/zentorrent/releases/download/v4.0.0/';
+
+    if (userAgent.includes('mac')) {
+      btn.href = base + 'zentorrent-darwin-arm64';
+      txt.innerText = 'Download for macOS';
+    } else if (userAgent.includes('win')) {
+      btn.href = base + 'zentorrent-windows-amd64.exe';
+      txt.innerText = 'Download for Windows (64-bit)';
+    } else if (userAgent.includes('linux')) {
+      btn.href = base + 'zentorrent-linux-amd64';
+      txt.innerText = 'Download for Linux (64-bit)';
+    } else {
+      btn.href = 'https://github.com/subwaycookiecrunch/zentorrent/releases/tag/v4.0.0';
+      txt.innerText = 'Download ZenTorrent v4.0.0';
+    }
+  })();
+
+  function copyInstallCmd() {
+    const cmd = document.getElementById('cmd-snippet').innerText;
+    navigator.clipboard.writeText(cmd).then(() => {
+      showToast('📋 Install command copied to clipboard!');
+    }).catch(() => {
+      showToast('Install command selected');
+    });
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+</script>
+
+</body>
+</html>
