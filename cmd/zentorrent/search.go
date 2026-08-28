@@ -31,15 +31,18 @@ type sourceFunc struct {
 }
 
 var allSources = []sourceFunc{
-	{"zendht", func(ctx context.Context, q string) ([]Result, error) { return SearchDHT(q), nil }},
+	{"tgx", func(ctx context.Context, q string) ([]Result, error) { return searchTorrentGalaxy(ctx, q) }},
+	{"bitsearch", func(ctx context.Context, q string) ([]Result, error) { return searchBitSearch(ctx, q) }},
+	{"solidtorrents", func(ctx context.Context, q string) ([]Result, error) { return searchSolidTorrents(ctx, q) }},
+	{"1337x", func(ctx context.Context, q string) ([]Result, error) { return search1337xCtx(ctx, q) }},
+	{"tpb", func(ctx context.Context, q string) ([]Result, error) { return searchTPB(ctx, q) }},
 	{"yts", func(ctx context.Context, q string) ([]Result, error) { return searchYTSCtx(ctx, q) }},
 	{"yts-official", func(ctx context.Context, q string) ([]Result, error) { return searchYTSOfficialCtx(ctx, q) }},
-	{"tpb", func(ctx context.Context, q string) ([]Result, error) { return searchTPB(ctx, q) }},
 	{"eztv", func(ctx context.Context, q string) ([]Result, error) { return searchEZTV(ctx, q) }},
-	{"1337x", func(ctx context.Context, q string) ([]Result, error) { return search1337xCtx(ctx, q) }},
 	{"nyaa", func(ctx context.Context, q string) ([]Result, error) { return searchNyaaRSS(ctx, q) }},
 	{"subsplease", func(ctx context.Context, q string) ([]Result, error) { return searchSubsPlease(ctx, q) }},
 	{"btdig", func(ctx context.Context, q string) ([]Result, error) { return searchBTDig(ctx, q) }},
+	{"zendht", func(ctx context.Context, q string) ([]Result, error) { return SearchDHT(q), nil }},
 }
 
 const sourceTimeout = 6 * time.Second
@@ -491,6 +494,12 @@ func (m *searchModel) rebuildTable() {
 
 func formatSource(src string) string {
 	switch src {
+	case "tgx", "torrentgalaxy":
+		return "TorrentGalaxy"
+	case "bitsearch":
+		return "BitSearch"
+	case "solidtorrents":
+		return "SolidTorrents"
 	case "yts-official":
 		return "YTS Official"
 	case "yts":

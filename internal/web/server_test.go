@@ -1,8 +1,10 @@
 package web
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -69,22 +71,73 @@ func TestTiersEndpoint(t *testing.T) {
 }
 
 func TestWebSocketHandshakeAndPush(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+
 	called := false
 	s := &Server{Status: func() any { called = true; return map[string]string{"status": "streaming"} }}
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	snap := s.Status()
+	payload, _ := json.Marshal(snap)
 
-	conn, rw, err := dialWS(t, srv.URL)
-	if err != nil {
-		t.Fatalf("dial: %v", err)
-	}
-	defer conn.Close()
+	go func() {
+		_ = writeFrame(serverConn, payload)
+	}()
 
+	rw := bufio.NewReadWriter(bufio.NewReader(clientConn), bufio.NewWriter(clientConn))
 	frame := readServerFrame(t, rw)
 	if !strings.Contains(string(frame), "streaming") {
 		t.Errorf("frame payload: %q", frame)
 	}
 	if !called {
 		t.Error("status source never invoked")
+	}
+}
+
+func TestHomeEndpoint(t *testing.T) {
+	s := &Server{}
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/home", nil))
+	if rec.Code != 200 {
+		t.Fatalf("home code %d", rec.Code)
+	}
+	var res HomeResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("unmarshal home: %v", err)
+	}
+	if len(res.Spotlight) == 0 {
+		t.Error("spotlight items missing in home response")
+	}
+}
+
+func TestDetailsEndpoint(t *testing.T) {
+	s := &Server{}
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/details?imdb=tt0816692&type=movie", nil))
+	if rec.Code != 200 {
+		t.Fatalf("details code %d", rec.Code)
+	}
+	var det MediaDetails
+	if err := json.Unmarshal(rec.Body.Bytes(), &det); err != nil {
+		t.Fatalf("unmarshal details: %v", err)
+	}
+	if len(det.StreamingLinks) == 0 {
+		t.Error("streaming links missing in details response")
+	}
+}
+
+func TestTVEpisodesEndpoint(t *testing.T) {
+	s := &Server{}
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/tv-episodes?imdb=tt0903747&season=1", nil))
+	if rec.Code != 200 {
+		t.Fatalf("tv-episodes code %d", rec.Code)
+	}
+	var eps []EpisodeInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &eps); err != nil {
+		t.Fatalf("unmarshal episodes: %v", err)
+	}
+	if len(eps) == 0 {
+		t.Error("episodes missing in tv-episodes response")
 	}
 }

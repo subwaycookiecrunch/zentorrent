@@ -6,7 +6,9 @@ package debrid
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -83,12 +85,36 @@ type CommonClient struct {
 }
 
 func newCommon(apiKey string) CommonClient {
+	return newCommonWithHTTP(apiKey, nil)
+}
+
+func newCommonWithHTTP(apiKey string, hc *http.Client) CommonClient {
+	if hc == nil {
+		hc = &http.Client{
+			Timeout: 20 * time.Second,
+			Transport: &http.Transport{
+				Proxy: func(req *http.Request) (*url.URL, error) {
+					if strings.HasPrefix(req.URL.Host, "127.0.0.1") || strings.HasPrefix(req.URL.Host, "localhost") {
+						return nil, nil
+					}
+					return http.ProxyFromEnvironment(req)
+				},
+				DialContext: (&net.Dialer{
+					Timeout:   5 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				MaxIdleConns:        50,
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     60 * time.Second,
+				TLSHandshakeTimeout: 5 * time.Second,
+				DisableCompression:  false,
+				ForceAttemptHTTP2:   true,
+			},
+		}
+	}
 	return CommonClient{
-		APIKey: strings.TrimSpace(apiKey),
-		hc: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-		// Both APIs throttle hard; 2 rps with small burst is polite.
+		APIKey:  strings.TrimSpace(apiKey),
+		hc:      hc,
 		limiter: rate.NewLimiter(rate.Limit(2), 3),
 	}
 }

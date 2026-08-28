@@ -2,40 +2,41 @@ package debrid
 
 import (
 	"context"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
+type mockRoundTripper func(req *http.Request) (*http.Response, error)
+
+func (m mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) { return m(req) }
+
 const testHash = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b"
 
 func TestRealDebridCacheHit(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer testkey" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		switch {
-		case strings.Contains(r.URL.Path, "instantAvailability"):
-			w.Write([]byte(`{"` + testHash + `":{"rd":[{"1":{}}]}}`))
-		case strings.Contains(r.URL.Path, "addMagnet"):
-			w.Write([]byte(`{"id":"t123"}`))
-		case strings.Contains(r.URL.Path, "torrents/info/t123"):
-			w.Write([]byte(`{"id":"t123","status":"downloaded","links":["https://rd/link/1"],
-				"files":[{"id":0,"path":"/data/Movie.1080p.mkv","bytes":3200000000}]}`))
-		case strings.Contains(r.URL.Path, "unrestrict"):
-			w.Write([]byte(`{"download":"https://rd.dl/abc","filename":"Movie.1080p.mkv","filesize":3200000000}`))
-		case strings.Contains(r.URL.Path, "delete"):
-			w.WriteHeader(200)
-		default:
-			w.WriteHeader(404)
-		}
-	}))
-	defer srv.Close()
-
-	rd := NewRealDebrid("testkey")
-	rd.base = srv.URL
+	rd := NewRealDebridWithHTTP("testkey", &http.Client{
+		Transport: mockRoundTripper(func(req *http.Request) (*http.Response, error) {
+			if req.Header.Get("Authorization") != "Bearer testkey" {
+				return &http.Response{StatusCode: http.StatusUnauthorized, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
+			}
+			switch {
+			case strings.Contains(req.URL.Path, "instantAvailability"):
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"` + testHash + `":{"rd":[{"1":{}}]}}`)), Header: make(http.Header)}, nil
+			case strings.Contains(req.URL.Path, "addMagnet"):
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"id":"t123"}`)), Header: make(http.Header)}, nil
+			case strings.Contains(req.URL.Path, "torrents/info/t123"):
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"id":"t123","status":"downloaded","links":["https://rd/link/1"],
+					"files":[{"id":0,"path":"/data/Movie.1080p.mkv","bytes":3200000000}]}`)), Header: make(http.Header)}, nil
+			case strings.Contains(req.URL.Path, "unrestrict"):
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"download":"https://rd.dl/abc","filename":"Movie.1080p.mkv","filesize":3200000000}`)), Header: make(http.Header)}, nil
+			case strings.Contains(req.URL.Path, "delete"):
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
+			default:
+				return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
+			}
+		}),
+	})
 
 	src, err := rd.Resolve(context.Background(), MediaItem{
 		Magnet: "magnet:?xt=urn:btih:" + testHash,
@@ -55,13 +56,15 @@ func TestRealDebridCacheHit(t *testing.T) {
 }
 
 func TestRealDebridNotCached(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"` + testHash + `":{"rd":[]}}`)) // empty = uncached
-	}))
-	defer srv.Close()
-
-	rd := NewRealDebrid("k")
-	rd.base = srv.URL
+	rd := NewRealDebridWithHTTP("k", &http.Client{
+		Transport: mockRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(`{"` + testHash + `":{"rd":[]}}`)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	})
 	_, err := rd.Resolve(context.Background(), MediaItem{Magnet: "magnet:?xt=urn:btih:" + testHash})
 	if err != ErrNotCached {
 		t.Fatalf("want ErrNotCached, got %v", err)
@@ -69,22 +72,32 @@ func TestRealDebridNotCached(t *testing.T) {
 }
 
 func TestTorBoxResolve(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case strings.Contains(r.URL.Path, "mylist") && r.URL.Query().Get("cached") == "true":
-			w.Write([]byte(`{"success":true,"data":[{"id":7,"hash":"` + strings.ToUpper(testHash) +
-				`","name":"Show.S01","cached":true,"download_state":"cached",
-				  "files":[{"file_id":1,"short_name":"ep1.mkv","size":2000000000}]}]}`))
-		case strings.Contains(r.URL.Path, "requestdl"):
-			w.Write([]byte(`{"success":true,"data":[{"filename":"ep1.mkv","size":2000000000,"link":"https://tb.dl/x"}]}`))
-		default:
-			w.Write([]byte(`{"success":false,"error":"unexpected"}`))
-		}
-	}))
-	defer srv.Close()
-
-	tb := NewTorBox("k")
-	tb.base = srv.URL
+	tb := NewTorBoxWithHTTP("k", &http.Client{
+		Transport: mockRoundTripper(func(req *http.Request) (*http.Response, error) {
+			switch {
+			case strings.Contains(req.URL.Path, "mylist") && req.URL.Query().Get("cached") == "true":
+				return &http.Response{
+					StatusCode: 200,
+					Body: io.NopCloser(strings.NewReader(`{"success":true,"data":[{"id":7,"hash":"` + strings.ToUpper(testHash) +
+						`","name":"Show.S01","cached":true,"download_state":"cached",
+						  "files":[{"file_id":1,"short_name":"ep1.mkv","size":2000000000}]}]}`)),
+					Header: make(http.Header),
+				}, nil
+			case strings.Contains(req.URL.Path, "requestdl"):
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(strings.NewReader(`{"success":true,"data":[{"filename":"ep1.mkv","size":2000000000,"link":"https://tb.dl/x"}]}`)),
+					Header:     make(http.Header),
+				}, nil
+			default:
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(strings.NewReader(`{"success":false,"error":"unexpected"}`)),
+					Header:     make(http.Header),
+				}, nil
+			}
+		}),
+	})
 
 	src, err := tb.Resolve(context.Background(), MediaItem{
 		Magnet:   "magnet:?xt=urn:btih:" + testHash,

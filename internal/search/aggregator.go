@@ -102,9 +102,73 @@ func NewAggregator(
 	}
 }
 
-// Suggest exposes the catalog's type-ahead completions (web + TUI share it).
+// Suggest exposes type-ahead completions combining local SQLite catalog and live multi-search metadata.
 func (a *Aggregator) Suggest(ctx context.Context, prefix string, limit int) ([]metadata.Suggestion, error) {
-	return a.cat.Suggest(ctx, prefix, limit)
+	prefix = strings.TrimSpace(prefix)
+	if prefix == "" {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 8
+	}
+
+	var (
+		local []metadata.Suggestion
+		live  []metadata.Suggestion
+		wg    sync.WaitGroup
+	)
+
+	// 1. Local catalog lookup in parallel
+	if a.cat != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			local, _ = a.cat.Suggest(ctx, prefix, limit)
+		}()
+	}
+
+	// 2. Concurrent live metadata lookup (TMDB / Cinemeta with 500ms budget)
+	if a.tmdb != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			lctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer cancel()
+			live, _ = a.tmdb.SearchMulti(lctx, prefix, limit)
+		}()
+	}
+
+	wg.Wait()
+
+	// 3. Merge and deduplicate
+	seen := make(map[string]bool)
+	var combined []metadata.Suggestion
+
+	normKey := func(s metadata.Suggestion) string {
+		t := metadata.NormalizeQuery(s.Title)
+		t = strings.ReplaceAll(t, " ", "")
+		return fmt.Sprintf("%s:%d:%s", t, s.Year, s.MediaType)
+	}
+
+	for _, it := range live {
+		k := normKey(it)
+		if !seen[k] {
+			seen[k] = true
+			combined = append(combined, it)
+		}
+	}
+	for _, it := range local {
+		k := normKey(it)
+		if !seen[k] {
+			seen[k] = true
+			combined = append(combined, it)
+		}
+	}
+
+	if len(combined) > limit {
+		combined = combined[:limit]
+	}
+	return combined, nil
 }
 
 // ResolveQuery maps free text ("drishiam 2", "interstelar 1080p") to the

@@ -7,13 +7,12 @@ import (
 )
 
 func TestDiscoverStreamEventOrdering(t *testing.T) {
-	srv := torznabServerFixture(t,
+	torznabCl := torznabClientFixture(t,
 		"Bahubali.The.Beginning.2015.1080p.BluRay.Dual.Audio.x264-TOMMY", knownHashAgg, 64)
-	defer srv.Close()
 
 	cat := testCatalogForAgg(t)
 	agg := NewAggregator(cat, nil,
-		NewTorznabClient([]Endpoint{{Name: "idx1", BaseURL: srv.URL, APIKey: "k"}}),
+		torznabCl,
 		nil,
 		[]Scraper{&stubScraper{name: "stub", cands: []TorrentCandidate{
 			{InfoHash: knownHashAgg, Title: "dup", Seeders: 3, Source: "stub"},

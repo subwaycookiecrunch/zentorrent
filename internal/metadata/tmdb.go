@@ -8,7 +8,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -284,3 +287,227 @@ func (c *Client) apiGet(ctx context.Context, pathWithQuery string, out any) erro
 	}
 	return json.Unmarshal(body, out)
 }
+
+var (
+	metaCacheMu sync.RWMutex
+	metaCache   = make(map[string][]Suggestion)
+)
+
+// SearchMulti searches TMDB (or Cinemeta fallback) for movies, series, and anime matching query.
+func (c *Client) SearchMulti(ctx context.Context, query string, limit int) ([]Suggestion, error) {
+	q := strings.TrimSpace(query)
+	if q == "" {
+		return nil, nil
+	}
+	if limit <= 0 {
+		limit = 8
+	}
+
+	normQ := strings.ToLower(q)
+	metaCacheMu.RLock()
+	if cached, ok := metaCache[normQ]; ok {
+		metaCacheMu.RUnlock()
+		if len(cached) > limit {
+			return cached[:limit], nil
+		}
+		return cached, nil
+	}
+	metaCacheMu.RUnlock()
+
+	var out []Suggestion
+	if c != nil && c.apiKey != "" {
+		var resp struct {
+			Results []struct {
+				ID            int64   `json:"id"`
+				MediaType     string  `json:"media_type"`
+				Title         string  `json:"title"`
+				Name          string  `json:"name"`
+				OriginalName  string  `json:"original_name"`
+				OriginalTitle string  `json:"original_title"`
+				ReleaseDate   string  `json:"release_date"`
+				FirstAirDate  string  `json:"first_air_date"`
+				Popularity    float64 `json:"popularity"`
+				VoteAverage   float64 `json:"vote_average"`
+				Overview      string  `json:"overview"`
+				GenreIDs      []int   `json:"genre_ids"`
+				OriginalLang  string  `json:"original_language"`
+			} `json:"results"`
+		}
+
+		err := c.apiGet(ctx, fmt.Sprintf("/search/multi?query=%s&include_adult=false", url.QueryEscape(q)), &resp)
+		if err == nil && len(resp.Results) > 0 {
+			for _, r := range resp.Results {
+				if r.MediaType != "movie" && r.MediaType != "tv" {
+					continue
+				}
+				title := r.Title
+				orig := r.OriginalTitle
+				if r.MediaType == "tv" {
+					if title == "" {
+						title = r.Name
+					}
+					if orig == "" {
+						orig = r.OriginalName
+					}
+				}
+				if title == "" {
+					continue
+				}
+				year := 0
+				dateStr := r.ReleaseDate
+				if dateStr == "" {
+					dateStr = r.FirstAirDate
+				}
+				if len(dateStr) >= 4 {
+					if y, err := strconv.Atoi(dateStr[:4]); err == nil {
+						year = y
+					}
+				}
+
+				mType := r.MediaType
+				if mType == "tv" && isAnimeLanguageOrGenre(r.OriginalLang, r.GenreIDs) {
+					mType = "anime"
+				}
+
+				out = append(out, Suggestion{
+					TMDBID:      r.ID,
+					Title:       title,
+					Original:    orig,
+					Year:        year,
+					MediaType:   mType,
+					VoteAverage: r.VoteAverage,
+					Popularity:  r.Popularity,
+					Language:    r.OriginalLang,
+					Overview:    r.Overview,
+				})
+				if len(out) >= limit {
+					break
+				}
+			}
+		}
+	}
+
+	if len(out) == 0 {
+		out, _ = searchCinemetaSuggest(ctx, q, limit)
+	}
+
+	if len(out) > 0 {
+		metaCacheMu.Lock()
+		if len(metaCache) > 1000 {
+			// Clear cache if large
+			metaCache = make(map[string][]Suggestion)
+		}
+		metaCache[normQ] = out
+		metaCacheMu.Unlock()
+	}
+
+	return out, nil
+}
+
+func isAnimeLanguageOrGenre(lang string, genreIDs []int) bool {
+	if strings.EqualFold(lang, "ja") {
+		return true
+	}
+	for _, id := range genreIDs {
+		if id == 16 { // Animation
+			return true
+		}
+	}
+	return false
+}
+
+var cinemetaClient = &http.Client{
+	Timeout: 1200 * time.Millisecond,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+		DisableCompression: false,
+	},
+}
+
+func searchCinemetaSuggest(ctx context.Context, query string, limit int) ([]Suggestion, error) {
+	type cinemetaItem struct {
+		ID          string   `json:"id"`
+		Name        string   `json:"name"`
+		Year        string   `json:"year"`
+		ReleaseInfo string   `json:"releaseInfo"`
+		Type        string   `json:"type"`
+		Genres      []string `json:"genres"`
+		IMDbRating  string   `json:"imdbRating"`
+		Description string   `json:"description"`
+	}
+	type cinemetaResp struct {
+		Metas []cinemetaItem `json:"metas"`
+	}
+
+	urls := []string{
+		"https://v3-cinemeta.strem.io/catalog/movie/top/search=" + url.QueryEscape(query) + ".json",
+		"https://v3-cinemeta.strem.io/catalog/series/top/search=" + url.QueryEscape(query) + ".json",
+	}
+
+	var (
+		mu      sync.Mutex
+		results []Suggestion
+		wg      sync.WaitGroup
+	)
+
+	for _, u := range urls {
+		u := u
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+			if err != nil {
+				return
+			}
+			resp, err := cinemetaClient.Do(req)
+			if err != nil {
+				return
+			}
+			defer resp.Body.Close()
+			var payload cinemetaResp
+			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+				return
+			}
+			var items []Suggestion
+			for _, m := range payload.Metas {
+				if m.Name == "" {
+					continue
+				}
+				y := 0
+				dateStr := m.ReleaseInfo
+				if dateStr == "" {
+					dateStr = m.Year
+				}
+				if len(dateStr) >= 4 {
+					y, _ = strconv.Atoi(dateStr[:4])
+				}
+				rating, _ := strconv.ParseFloat(m.IMDbRating, 64)
+				mType := m.Type
+				if mType == "series" {
+					mType = "tv"
+				}
+				items = append(items, Suggestion{
+					IMDbID:      m.ID,
+					Title:       m.Name,
+					Year:        y,
+					MediaType:   mType,
+					VoteAverage: rating,
+					Genres:      strings.Join(m.Genres, ", "),
+					Overview:    m.Description,
+				})
+			}
+			mu.Lock()
+			results = append(results, items...)
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+
+	if len(results) > limit {
+		results = results[:limit]
+	}
+	return results, nil
+}
+

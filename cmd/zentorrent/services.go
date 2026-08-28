@@ -163,7 +163,7 @@ func StartServices(cfg config.Config, interactive bool) (*Services, error) {
 	tmdb := metadata.NewClient(config.ResolveTMDBKey(cfg.TMDBApiKey), 8)
 	s.TMDB = tmdb
 
-	s.Discovery = search.NewAggregator(cat, tmdb, torznab, nil, nil, search.AggregatorConfig{})
+	s.Discovery = search.NewAggregator(cat, tmdb, torznab, nil, search.DefaultScrapers(), search.AggregatorConfig{})
 
 	// ---- multi-tier resolution stack ----
 	tr := &tierResolver{cfg: cfg}
@@ -174,8 +174,7 @@ func StartServices(cfg config.Config, interactive bool) (*Services, error) {
 		tr.providers = append(tr.providers, debrid.NewTorBox(key))
 	}
 	if cfg.EnableHLSFallback {
-		tr.extractors = append(tr.extractors,
-			extractors.NewVidSrc(), extractors.NewVidLink(), extractors.NewAutoEmbed())
+		tr.extractors = append(tr.extractors, extractors.AllExtractors()...)
 	}
 	s.Tiers = tr
 	s.Web = &web.Server{
@@ -203,7 +202,7 @@ func StartServices(cfg config.Config, interactive bool) (*Services, error) {
 		})
 		if err == nil {
 			s.DHT = idx
-			s.Discovery = search.NewAggregator(cat, tmdb, torznab, idx, nil, search.AggregatorConfig{})
+			s.Discovery = search.NewAggregator(cat, tmdb, torznab, idx, search.DefaultScrapers(), search.AggregatorConfig{})
 			s.Web.Discovery = s.Discovery
 			go func() {
 				defer func() { recover() }()
@@ -233,13 +232,13 @@ func (s *Services) dailyDumpLoop() {
 	if data, err := os.ReadFile(marker); err == nil && strings.TrimSpace(string(data)) == today {
 		return // already synced today
 	}
-	s.runDumpSync(true)
+	s.runDumpSync(false)
 
 	// Enrich the most popular rows so aliases keep improving over time.
 	bgCtx, cancel := context.WithTimeout(s.ctx, 10*time.Minute)
 	defer cancel()
 	if err := s.TMDB.BackfillDetails(bgCtx, s.Catalog, 400); err != nil && bgCtx.Err() == nil {
-		fmt.Printf("[Metadata] detail backfill stopped early: %v\n", err)
+		// silent in background
 	}
 }
 

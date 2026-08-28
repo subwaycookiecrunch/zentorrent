@@ -1,0 +1,175 @@
+Screen {
+    background: black;
+}
+
+#app-container {
+    width: 76;
+    height: 24;
+    margin: 1 0 0 2;
+    background: black;
+    layout: vertical;
+}
+
+#app-container.theme-black {
+    background: black;
+}
+.theme-black #results-list, .theme-black #queue-list, .theme-black #search-container, .theme-black #playback-container {
+    border: round #dfa27a;
+}
+.theme-black ListItem.-active {
+    background: #3d566f; /* Slate blue selection */
+}
+
+#app-container.theme-rose {
+    background: black;
+}
+.theme-rose #results-list, .theme-rose #queue-list, .theme-rose #search-container, .theme-rose #playback-container {
+    border: round #ebbcba;
+}
+.theme-rose ListItem.-active {
+    background: #31748f;
+}
+
+#app-container.theme-forest {
+    background: black;
+}
+.theme-forest #results-list, .theme-forest #queue-list, .theme-forest #search-container, .theme-forest #playback-container {
+    border: round #8fbcbb;
+}
+.theme-forest ListItem.-active {
+    background: #4c566a;
+}
+
+#app-container.theme-amber {
+    background: black;
+}
+.theme-amber #results-list, .theme-amber #queue-list, .theme-amber #search-container, .theme-amber #playback-container {
+    border: round #ff8700;
+}
+.theme-amber ListItem.-active {
+    background: #5f5f00;
+}
+
+#search-container {
+    height: 3;
+    padding: 0 1;
+    background: transparent;
+}
+
+Input {
+    border: none;
+    background: transparent;
+    color: #e8e3d9;
+    width: 100%;
+    padding: 0;
+}
+
+Input:focus {
+    border: none;
+    background: transparent;
+}
+
+#main-content {
+    layout: horizontal;
+    height: 1fr;
+    margin: 1 0;
+}
+
+.pane {
+    width: 1fr;
+    height: 1fr;
+    background: transparent;
+}
+
+#left-pane {
+    margin-right: 1;
+}
+
+#right-pane {
+    margin-left: 1;
+}
+
+#results-list, #queue-list {
+    background: transparent;
+    height: 1fr;
+}
+
+ListView, ListView:focus {
+    background: transparent;
+    height: 1fr;
+}
+
+ListItem {
+    padding: 0 1;
+    layout: horizontal;
+    height: 1;
+    background: transparent;
+}
+
+ListItem:hover {
+    background: #1c252a;
+}
+
+ListItem.-active .song-title {
+    color: #e8e3d9;
+}
+
+ListItem.-active .song-meta {
+    color: #dfa27a;
+}
+
+.song-title {
+    color: #e8e3d9;
+    width: 1fr;
+    content-align: left middle;
+}
+
+.song-meta {
+    color: #dfa27a;
+    width: auto;
+    content-align: right middle;
+}
+
+#playback-container {
+    height: 10;
+    background: transparent;
+    layout: vertical;
+    content-align: center middle;
+    padding: 0 2;
+}
+
+#cassette-art {
+    height: 5;
+    content-align: center middle;
+}
+
+#track-title {
+    width: 100%;
+    color: #e8e3d9;
+    text-style: bold;
+    height: 1;
+    content-align: center middle;
+}
+
+#progress-bar {
+    width: 100%;
+    height: 1;
+    content-align: center middle;
+    margin: 0;
+}
+
+#status-line {
+    width: 100%;
+    color: #d8a657; /* Gold status controls */
+    height: 1;
+    content-align: center middle;
+    margin: 0;
+}
+
+#footer-stats {
+    width: 100%;
+    color: #6c7a96; /* Muted gray-blue stats */
+    height: 1;
+    content-align: center middle;
+    margin-top: 1;
+}

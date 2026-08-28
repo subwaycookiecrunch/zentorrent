@@ -21,8 +21,12 @@ type RealDebrid struct {
 }
 
 func NewRealDebrid(apiKey string) *RealDebrid {
+	return NewRealDebridWithHTTP(apiKey, nil)
+}
+
+func NewRealDebridWithHTTP(apiKey string, hc *http.Client) *RealDebrid {
 	return &RealDebrid{
-		CommonClient: newCommon(apiKey),
+		CommonClient: newCommonWithHTTP(apiKey, hc),
 		base:         "https://api.real-debrid.com/rest/1.0",
 	}
 }

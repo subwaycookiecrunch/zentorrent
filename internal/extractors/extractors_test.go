@@ -2,8 +2,8 @@ package extractors
 
 import (
 	"context"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -28,17 +28,42 @@ func TestEmbedURLConstruction(t *testing.T) {
 	if a.EmbedURL(debrid.MediaItem{TMDBID: 1}) != "https://autoembed.cc/embed/movie/1" {
 		t.Error("autoembed base wrong")
 	}
+	vl := NewVidLove()
+	if vl.EmbedURL(debrid.MediaItem{TMDBID: 1288445}) != "https://player.vidlove.cc/embed/movie/1288445" {
+		t.Error("vidlove movie URL wrong")
+	}
+	cz := NewZenLive()
+	if cz.EmbedURL(debrid.MediaItem{TMDBID: 1288445, Season: 1, Episode: 2}) != "https://player.cinezo.live/embed/tv/1288445/1/2" {
+		t.Error("zenlive tv URL wrong")
+	}
+	vf := NewVidFast()
+	if vf.EmbedURL(debrid.MediaItem{TMDBID: 100}) != "https://vidfast.vc/movie/100" {
+		t.Error("vidfast URL wrong")
+	}
+	all := AllExtractors()
+	if len(all) < 5 {
+		t.Errorf("expected at least 5 extractors, got %d", len(all))
+	}
 }
 
+type mockRoundTripper func(req *http.Request) (*http.Response, error)
+
+func (m mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) { return m(req) }
+
 func TestExtractorCracksM3u8(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<script>var file="https://cdn.example.com/master.m3u8?tok=1";</script>`))
-	}))
-	defer srv.Close()
+	oldClient := httpClient
+	httpClient = &http.Client{
+		Transport: mockRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(`<script>var file="https://cdn.example.com/master.m3u8?tok=1";</script>`)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+	defer func() { httpClient = oldClient }()
 
 	v := NewVidSrc()
-	v.base = srv.URL // deterministic test target
-
 	src, err := v.Resolve(context.Background(), debrid.MediaItem{TMDBID: 42, Title: "Test"})
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
@@ -49,14 +74,19 @@ func TestExtractorCracksM3u8(t *testing.T) {
 }
 
 func TestExtractorDegradesToEmbed(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<html>blocked by captcha</html>"))
-	}))
-	defer srv.Close()
+	oldClient := httpClient
+	httpClient = &http.Client{
+		Transport: mockRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(`<html>blocked by captcha</html>`)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+	defer func() { httpClient = oldClient }()
 
 	a := NewAutoEmbed()
-	a.base = srv.URL + "/embed"
-
 	src, err := a.Resolve(context.Background(), debrid.MediaItem{TMDBID: 7, Title: "Blocked"})
 	if err != nil {
 		t.Fatalf("should degrade to embed URL, got %v", err)

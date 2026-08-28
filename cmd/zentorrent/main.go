@@ -41,6 +41,16 @@ func main() {
 		StartSearchTUI(query)
 		runShutdown()
 
+	case arg == "music" || arg == "player":
+		query := ""
+		if len(os.Args) >= 3 {
+			query = strings.Join(os.Args[2:], " ")
+		}
+		if err := LaunchZenPlayer(query); err != nil {
+			fmt.Printf("ZenPlayer error: %v\n", err)
+			os.Exit(1)
+		}
+
 	case arg == "sources":
 		fmt.Println("Available sources:")
 		for _, s := range allSources {
@@ -66,10 +76,22 @@ func main() {
 		PrintBanner()
 		PrintUsage()
 
-	case arg == "party" && len(os.Args) >= 4:
+	case arg == "party":
+		if len(os.Args) < 3 || os.Args[2] == "--help" || os.Args[2] == "-h" {
+			PrintBanner()
+			fmt.Println("  ZenParty CLI:")
+			fmt.Println("    zentorrent party create <title>    Host a synchronized Watch Party")
+			fmt.Println("    zentorrent party join <room_code>  Join an existing Watch Party room")
+			fmt.Println()
+			return
+		}
 		startServicesOrDie(true)
 		action := os.Args[2]
 		if action == "create" {
+			if len(os.Args) < 4 {
+				fmt.Println("Usage: zentorrent party create <movie/series title>")
+				return
+			}
 			query := strings.Join(os.Args[3:], " ")
 			cmd := ZsCommand{Title: query}
 			fmt.Printf("Resolving movie for party: %s...\n", query)
@@ -82,9 +104,16 @@ func main() {
 			partyKey = GeneratePartyKey()
 			StartPartyHost(res.Magnet)
 		} else if action == "join" {
+			if len(os.Args) < 4 {
+				fmt.Println("Usage: zentorrent party join <room_code>")
+				return
+			}
 			isPartyJoiner = true
 			StartPartyJoin(os.Args[3])
 		}
+
+	case arg == "watchonline" || arg == "online" || arg == "watch" || arg == "web":
+		StartWatchOnlineSession()
 
 	case arg == "serve":
 		startServicesOrDie(true)
@@ -173,6 +202,7 @@ func startServicesOrDie(interactive bool) {
 		os.Exit(1)
 	}
 	_ = s // also reachable via Discovery()/CatalogHandle()
+	_ = ensureVODServer()
 }
 
 // lanIPs lists non-loopback IPv4 addresses for the web dashboard banner.

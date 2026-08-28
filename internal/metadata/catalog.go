@@ -126,6 +126,10 @@ func OpenCatalog(path string) (*Catalog, error) {
 	}
 	db.SetMaxOpenConns(1)
 
+	_, _ = db.Exec("PRAGMA synchronous = NORMAL;")
+	_, _ = db.Exec("PRAGMA cache_size = -64000;")
+	_, _ = db.Exec("PRAGMA temp_store = MEMORY;")
+
 	for _, stmt := range catalogSchemaStmts {
 		if _, err := db.Exec(stmt); err != nil {
 			// The phonetic ALTER is idempotent-by-intent: duplicate column on
@@ -860,36 +864,45 @@ func init() {
 
 // ---- Type-ahead suggestions ---------------------------------------------------
 
-// Suggestion is one autocomplete pill.
+// Suggestion is one autocomplete entry.
 type Suggestion struct {
-	TMDBID     int64
-	Title      string
-	Year       int
-	Popularity float64
+	TMDBID       int64   `json:"id"`
+	IMDbID       string  `json:"imdb_id,omitempty"`
+	Title        string  `json:"title"`
+	Original     string  `json:"original,omitempty"`
+	Year         int     `json:"year"`
+	MediaType    string  `json:"media_type"` // "movie", "tv", "anime"
+	VoteAverage  float64 `json:"vote_average"`
+	Popularity   float64 `json:"popularity"`
+	Genres       string  `json:"genres,omitempty"`
+	Language     string  `json:"lang,omitempty"`
+	Overview     string  `json:"overview,omitempty"`
+	PosterPath   string  `json:"poster_path,omitempty"`
+	BackdropPath string  `json:"backdrop_path,omitempty"`
 }
 
 // Suggest returns instant type-ahead completions for a partial query,
 // matching titles, original titles, and aliases. Safe to call every few
 // keystrokes: it is a single indexed LIKE over the catalog.
 func (c *Catalog) Suggest(ctx context.Context, prefix string, limit int) ([]Suggestion, error) {
-	prefix = NormalizeQuery(prefix)
-	prefix = strings.ReplaceAll(prefix, " ", "")
-	if prefix == "" || limit <= 0 {
+	cleanPrefix := NormalizeQuery(prefix)
+	cleanPrefix = strings.ReplaceAll(cleanPrefix, " ", "")
+	if cleanPrefix == "" || limit <= 0 {
 		return nil, nil
 	}
 	// Three relevance tiers: field-start ("drish"->"Drishyam"), then
 	// word-start inside a title ("bah"->"Bahnhof"), then plain contains.
 	// Fields are newline-separated inside searchable.
-	startPattern := "%\n" + likeEscape(prefix) + "%"
-	wordPattern := "% " + likeEscape(prefix) + "%"
+	startPattern := "%\n" + likeEscape(cleanPrefix) + "%"
+	wordPattern := "% " + likeEscape(cleanPrefix) + "%"
 	rows, err := c.db.QueryContext(ctx,
-		`SELECT id, title, year, popularity FROM movies
+		`SELECT id, imdb_id, title, original_title, year, vote_average, popularity, genres, original_language, overview, poster_path FROM movies
 		 WHERE searchable LIKE ? ESCAPE '\'
 		 ORDER BY (searchable LIKE ? ESCAPE '\') DESC,
 		          (searchable LIKE ? ESCAPE '\') DESC,
 		          popularity DESC
 		 LIMIT ?`,
-		"%"+likeEscape(prefix)+"%", startPattern, wordPattern, limit)
+		"%"+likeEscape(cleanPrefix)+"%", startPattern, wordPattern, limit)
 	if err != nil {
 		return nil, fmt.Errorf("metadata: suggest: %w", err)
 	}
@@ -897,8 +910,15 @@ func (c *Catalog) Suggest(ctx context.Context, prefix string, limit int) ([]Sugg
 
 	out := make([]Suggestion, 0, limit)
 	for rows.Next() {
-		var s Suggestion
-		if err := rows.Scan(&s.TMDBID, &s.Title, &s.Year, &s.Popularity); err == nil {
+		var (
+			s      Suggestion
+			imdb   sql.NullString
+			poster sql.NullString
+		)
+		if err := rows.Scan(&s.TMDBID, &imdb, &s.Title, &s.Original, &s.Year, &s.VoteAverage, &s.Popularity, &s.Genres, &s.Language, &s.Overview, &poster); err == nil {
+			s.IMDbID = imdb.String
+			s.PosterPath = poster.String
+			s.MediaType = "movie"
 			out = append(out, s)
 		}
 	}

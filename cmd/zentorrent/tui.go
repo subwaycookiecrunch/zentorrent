@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -20,7 +19,16 @@ type suggestionSource interface {
 	Suggest(ctx context.Context, prefix string, limit int) ([]metadata.Suggestion, error)
 }
 
-const suggestDebounce = 120 * time.Millisecond
+const suggestDebounce = 25 * time.Millisecond
+
+var defaultTrending = []metadata.Suggestion{
+	{Title: "Stranger Things", Year: 2016, MediaType: "tv", VoteAverage: 8.6, Genres: "Sci-Fi, Drama"},
+	{Title: "Breaking Bad", Year: 2008, MediaType: "tv", VoteAverage: 9.5, Genres: "Crime, Drama"},
+	{Title: "Interstellar", Year: 2014, MediaType: "movie", VoteAverage: 8.7, Genres: "Sci-Fi, Adventure"},
+	{Title: "Inception", Year: 2010, MediaType: "movie", VoteAverage: 8.8, Genres: "Action, Sci-Fi"},
+	{Title: "One Piece", Year: 1999, MediaType: "anime", VoteAverage: 9.0, Genres: "Animation, Action"},
+	{Title: "Stree 2", Year: 2024, MediaType: "movie", VoteAverage: 7.6, Genres: "Comedy, Horror"},
+}
 
 type (
 	menuSuggestValue struct {
@@ -41,6 +49,7 @@ const (
 	actionSearch
 	actionStream
 	actionDownload
+	actionZenPlayer
 	actionWeb
 	actionBookmarks
 	actionHistory
@@ -61,10 +70,11 @@ var menuItems = []menuItem{
 	{"🔍", "Search", "Find movies, TV shows, anime", actionSearch},
 	{"⚡", "Stream", "Paste magnet/torrent to stream", actionStream},
 	{"⬇️", "Download", "Download torrent/magnet to disk", actionDownload},
+	{"📻", "ZenPlayer", "Retro cassette music player & YouTube streaming", actionZenPlayer},
 	{"📌", "Bookmarks", "View saved watchlist", actionBookmarks},
 	{"📜", "History", "Continue watching recent streams", actionHistory},
 	{"🍿", "ZenParty", "Host or join a watch-together session", actionParty},
-	{"🌐", "Web Player", "Stream on phone / TV via browser", actionWeb},
+	{"🌐", "Watch Online", "Launch private cinema tunnel & browser", actionWeb},
 	{"⚙", "Config", "View & edit current settings", actionSettings},
 	{"✕", "Quit", "Exit ZenTorrent", actionQuit},
 }
@@ -159,11 +169,18 @@ func newMenuModel() menuModel {
 	ti.CharLimit = 500
 	ti.Width = 50
 
+	var sugg suggestionSource
+	if d := Discovery(); d != nil {
+		sugg = d
+	} else {
+		sugg = CatalogHandle()
+	}
+
 	return menuModel{
 		cursor:    0,
 		textInput: ti,
 		sugSel:    -1,
-		suggester: CatalogHandle(),
+		suggester: sugg,
 	}
 }
 
@@ -229,7 +246,7 @@ func (m *menuModel) inputWidth() int {
 func StartMainMenu() {
 	for {
 		m := newMenuModel()
-		p := tea.NewProgram(m)
+		p := tea.NewProgram(m, tea.WithAltScreen())
 		finalModel, err := p.Run()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
@@ -251,6 +268,11 @@ func StartMainMenu() {
 			if fm.uri != "" {
 				StartDownloadTUI(fm.uri, 0)
 			}
+		case actionZenPlayer:
+			if err := LaunchZenPlayer(""); err != nil {
+				fmt.Printf("ZenPlayer error: %v\n", err)
+				time.Sleep(2 * time.Second)
+			}
 		case actionBookmarks:
 			StartBookmarksTUI()
 		case actionHistory:
@@ -260,13 +282,7 @@ func StartMainMenu() {
 		case actionSettings:
 			StartConfigTUI()
 		case actionWeb:
-			startServicesOrDie(true)
-			url := fmt.Sprintf("http://localhost:%d", appConfig.StreamPort)
-			fmt.Printf("\n🌐 Dashboard: %s\n", url)
-			if exec.Command("open", url).Run() != nil {
-				fmt.Println("  open the URL manually on this network")
-			}
-			time.Sleep(time.Second)
+			StartWatchOnlineSession()
 		default:
 			return
 		}
@@ -347,6 +363,17 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.quitting = true
 				return m, tea.Quit
+			case "tab":
+				if m.inputMode == "search" && len(m.sugg) > 0 {
+					if m.sugSel == -1 {
+						m.typed = m.textInput.Value()
+						m.sugSel = 0
+					} else {
+						m.sugSel = (m.sugSel + 1) % len(m.sugg)
+					}
+					m.fillFromPill()
+					return m, nil
+				}
 			}
 			// Netflix-style pill navigation while suggestions are up.
 			if m.inputMode == "search" && len(m.sugg) > 0 && (key == "down" || key == "up") {
@@ -376,7 +403,9 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.inputMode == "search" && m.textInput.Value() != prev && !m.suppress {
 				m.sugSel = -1
 				m.typed = m.textInput.Value()
-				if kick := m.menuKickSuggest(); kick != nil {
+				if strings.TrimSpace(m.textInput.Value()) == "" {
+					m.sugg = defaultTrending
+				} else if kick := m.menuKickSuggest(); kick != nil {
 					cmd = tea.Batch(cmd, kick)
 				}
 			}
@@ -405,6 +434,8 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.SetValue("")
 				m.textInput.Width = m.inputWidth()
 				m.textInput.Focus()
+				m.sugg = defaultTrending
+				m.sugSel = -1
 				return m, textinput.Blink
 			case actionStream:
 				m.inputMode = "stream"
@@ -420,7 +451,7 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.Width = m.inputWidth()
 				m.textInput.Focus()
 				return m, textinput.Blink
-			case actionBookmarks, actionHistory, actionSettings, actionParty:
+			case actionZenPlayer, actionWeb, actionBookmarks, actionHistory, actionSettings, actionParty:
 				m.action = item.action
 				m.quitting = true
 				return m, tea.Quit
@@ -464,32 +495,56 @@ func (m menuModel) View() string {
 		b.WriteString("\n")
 
 		if m.inputMode == "search" && len(m.sugg) > 0 {
-			b.WriteString("\n")
-			var pills []string
+			headerTitle := "POPULAR MATCHES:"
+			if strings.TrimSpace(m.textInput.Value()) == "" {
+				headerTitle = "TRENDING RECOMMENDATIONS:"
+			}
+			b.WriteString("\n  " + lipgloss.NewStyle().Foreground(colorCyan).Bold(true).Render(headerTitle) + "\n")
 			for i, s := range m.sugg {
+				icon := "🎬"
+				if s.MediaType == "tv" {
+					icon = "📺"
+				} else if s.MediaType == "anime" {
+					icon = "🌸"
+				}
+
+				titleStr := pillLabel(s)
+				metaStr := ""
+				if s.VoteAverage > 0 {
+					metaStr += fmt.Sprintf(" • ⭐ %.1f", s.VoteAverage)
+				}
+				if s.Genres != "" {
+					g := s.Genres
+					if len(g) > 22 {
+						g = g[:20] + ".."
+					}
+					metaStr += " • " + g
+				}
+
+				rowText := fmt.Sprintf("%s %s%s", icon, titleStr, metaStr)
+				maxW := 62
+				if m.width > 0 && m.width-12 < maxW {
+					maxW = m.width - 12
+				}
+				if maxW < 30 {
+					maxW = 30
+				}
+				rowText = truncateCells(rowText, maxW)
+
 				if i == m.sugSel {
-					pills = append(pills, lipgloss.NewStyle().Foreground(selectedRowFg).
-						Background(colorPurple).Bold(true).Padding(0, 1).
-						Render(truncateCells(pillLabel(s), 36)))
+					b.WriteString("  " + lipgloss.NewStyle().
+						Foreground(selectedRowFg).
+						Background(colorPurple).
+						Bold(true).
+						Padding(0, 1).
+						Render("▸ "+rowText) + "\n")
 				} else {
-					pills = append(pills, pillIdleStyle.Render("["+truncateCells(pillLabel(s), 36)+"]"))
+					b.WriteString("    " + lipgloss.NewStyle().
+						Foreground(lipgloss.Color("#d4d4d8")).
+						Render(rowText) + "\n")
 				}
 			}
-			// One long unbroken row stretches the box past the terminal and
-			// shreds the border; wrap to the terminal minus box chrome.
-			maxRow := 62
-			if m.width > 0 {
-				maxRow = m.width - 12 // box chrome (8) + row indent (2) + slack
-			}
-			if maxRow < 30 {
-				maxRow = 30
-			}
-			for _, row := range wrapCells(pills, maxRow) {
-				b.WriteString("  " + row + "\n")
-			}
-			b.WriteString(footerStyle.Render("  ↓ pick a suggestion · enter search · esc dismiss"))
-			b.WriteString("\n\n")
-			b.WriteString(footerStyle.Render("  enter to confirm • esc to go back"))
+			b.WriteString("\n" + footerStyle.Render("  ↑/↓ navigate • tab fill • enter search & stream • esc back"))
 			b.WriteString("\n")
 			return menuBoxStyle.Render(b.String())
 		}

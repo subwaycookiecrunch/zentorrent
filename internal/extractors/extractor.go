@@ -9,7 +9,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -19,8 +22,28 @@ import (
 // ErrNoStream mirrors debrid.ErrNoStream for interface symmetry.
 var ErrNoStream = errors.New("extractors: no stream available")
 
-// httpClient shared by all extractors.
-var httpClient = &http.Client{Timeout: 15 * time.Second}
+// httpClient shared by all extractors with tuned connection pooling.
+var httpClient = &http.Client{
+	Timeout: 12 * time.Second,
+	Transport: &http.Transport{
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			if strings.HasPrefix(req.URL.Host, "127.0.0.1") || strings.HasPrefix(req.URL.Host, "localhost") {
+				return nil, nil
+			}
+			return http.ProxyFromEnvironment(req)
+		},
+		DialContext: (&net.Dialer{
+			Timeout:   8 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 8 * time.Second,
+		DisableCompression:  false,
+		ForceAttemptHTTP2:   true,
+	},
+}
 
 // baseExtractor carries the common fields of every embed provider.
 type baseExtractor struct {
@@ -95,14 +118,9 @@ func fetchPage(ctx context.Context, url string) (string, error) {
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("extractors: HTTP %d for %s", resp.StatusCode, url)
 	}
-	buf := make([]byte, 0, 512<<10)
-	tmp := make([]byte, 32<<10)
-	for {
-		n, err := resp.Body.Read(tmp)
-		buf = append(buf, tmp[:n]...)
-		if len(buf) >= 512<<10 || err != nil {
-			break
-		}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 512<<10))
+	if err != nil {
+		return "", err
 	}
-	return string(buf), nil
+	return string(body), nil
 }

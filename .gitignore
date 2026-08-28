@@ -11,3 +11,7 @@ zentorrent.exe
 /dist/
 *.patch
 .qoder/
+__pycache__/
+*.py[cod]
+venv/
+.venv/

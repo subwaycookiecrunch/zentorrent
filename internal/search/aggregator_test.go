@@ -3,8 +3,8 @@ package search
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -208,7 +208,7 @@ func (s *stubScraper) Search(ctx context.Context, movie *ResolvedMovie, raw stri
 	return s.cands, nil
 }
 
-func torznabServerFixture(t *testing.T, title, hash string, seeders int) *httptest.Server {
+func torznabClientFixture(t *testing.T, title, hash string, seeders int) *TorznabClient {
 	t.Helper()
 	xml := fmt.Sprintf(`<?xml version="1.0"?>
 <rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel><item>
@@ -217,19 +217,24 @@ func torznabServerFixture(t *testing.T, title, hash string, seeders int) *httpte
 <newznab:attr name="seeders" value="%d"/>
 <enclosure url="magnet:?xt=urn:btih:%s&amp;dn=x"/>
 </item></channel></rss>`, title, hash, seeders, hash)
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(xml))
-	}))
+	return NewTorznabClientWithHTTP([]Endpoint{{Name: "testidx", BaseURL: "https://idx.test/api", APIKey: "k"}}, &http.Client{
+		Transport: mockRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(xml)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	})
 }
 
 func TestDiscoverEndToEnd(t *testing.T) {
-	srv := torznabServerFixture(t,
+	torznabCl := torznabClientFixture(t,
 		"Bahubali.The.Beginning.2015.1080p.BluRay.x264-TOMMY", knownHashAgg, 77)
-	defer srv.Close()
 
 	cat := testCatalogForAgg(t)
 	agg := NewAggregator(cat, nil,
-		NewTorznabClient([]Endpoint{{Name: "testidx", BaseURL: srv.URL, APIKey: "k"}}),
+		torznabCl,
 		nil,
 		[]Scraper{&stubScraper{
 			name:  "stub",

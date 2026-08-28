@@ -20,8 +20,12 @@ type TorBox struct {
 }
 
 func NewTorBox(apiKey string) *TorBox {
+	return NewTorBoxWithHTTP(apiKey, nil)
+}
+
+func NewTorBoxWithHTTP(apiKey string, hc *http.Client) *TorBox {
 	return &TorBox{
-		CommonClient: newCommon(apiKey),
+		CommonClient: newCommonWithHTTP(apiKey, hc),
 		base:         "https://torbox.app/api",
 	}
 }

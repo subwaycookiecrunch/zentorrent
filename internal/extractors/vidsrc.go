@@ -3,7 +3,6 @@ package extractors
 import (
 	"context"
 	"regexp"
-	"strings"
 
 	"github.com/subwaycookiecrunch/zentorrent/internal/debrid"
 )
@@ -16,8 +15,9 @@ func NewVidSrc() *VidSrc {
 }
 
 var (
-	vidsrcSourcesRe = regexp.MustCompile(`"source":"([^"]+)"`)
-	vidsrcFileRe    = regexp.MustCompile(`(?i)(?:file|source)\s*[:=]\s*"(https?://[^"]+\.(?:m3u8|mp4)[^"]*)"`)
+	vidsrcSourcesRe = regexp.MustCompile(`"source"\s*:\s*"([^"]+)"`)
+	vidsrcFileRe    = regexp.MustCompile(`(?i)(?:file|source)\s*[:=]\s*["'](https?://[^"'\s]+)["']`)
+	vidsrcM3u8Re    = regexp.MustCompile(`(?i)["'](https?://[^"'\s]+\.(?:m3u8|mp4)[^"'\s]*)["']`)
 )
 
 // crack attempts the two-hop player chain (embed page → sources JSON).
@@ -27,10 +27,13 @@ func (v *VidSrc) crack(ctx context.Context, embedURL string) (string, error) {
 		return "", err
 	}
 	if m := vidsrcFileRe.FindStringSubmatch(page); m != nil {
-		return strings.ReplaceAll(m[1], `&`, "&"), nil
+		return strings_unescape(m[1]), nil
+	}
+	if m := vidsrcM3u8Re.FindStringSubmatch(page); m != nil {
+		return strings_unescape(m[1]), nil
 	}
 	if m := vidsrcSourcesRe.FindStringSubmatch(page); m != nil {
-		return m[1], nil
+		return strings_unescape(m[1]), nil
 	}
 	return "", ErrNoStream
 }

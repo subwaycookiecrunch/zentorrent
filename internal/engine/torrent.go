@@ -93,26 +93,72 @@ func Get() (*torrent.Client, string, error) {
 }
 
 var engineTrackers = []string{
-	"udp://open.tracker.cl:1337/announce",
+	// udp trackers
 	"udp://tracker.opentrackr.org:1337/announce",
+	"udp://open.tracker.cl:1337/announce",
+	"udp://open.demonii.com:1337/announce",
+	"udp://open.stealth.si:80/announce",
+	"udp://tracker.torrent.eu.org:451/announce",
 	"udp://tracker.openbittorrent.com:6969/announce",
 	"udp://opentracker.i2p.rocks:6969/announce",
-	"udp://tracker.torrent.eu.org:451/announce",
-	"udp://open.stealth.si:80/announce",
-	"http://nyaa.tracker.wf:7777/announce",
-	"udp://exodus.desync.com:6969/announce",
-	"udp://tracker.tiny-vps.com:6969/announce",
-	"udp://tracker.moeking.me:6969/announce",
-	"udp://p4p.arenabg.com:1337/announce",
 	"udp://tracker.dler.org:6969/announce",
-	"udp://9.rarbg.com:2810/announce",
 	"udp://tracker2.dler.org:80/announce",
-	"udp://open.demonii.com:1337/announce",
+	"udp://tracker.moeking.me:6969/announce",
+	"udp://tracker.tiny-vps.com:6969/announce",
+	"udp://exodus.desync.com:6969/announce",
+	"udp://p4p.arenabg.com:1337/announce",
+	"udp://9.rarbg.com:2810/announce",
 	"udp://tracker.cubonegro.xyz:6969/announce",
+	"udp://tracker.theoks.net:6969/announce",
+	"udp://tracker.tamersunion.org:6969/announce",
+	"udp://tracker.coppersurfer.tk:6969/announce",
+	"udp://tracker.internetwarriors.net:1337/announce",
+	"udp://tracker.cyberia.is:6969/announce",
+	"udp://explodie.org:6969/announce",
+	"udp://bt1.archive.org:6969/announce",
+	"udp://bt2.archive.org:6969/announce",
+	"udp://retracker.lanta-net.ru:2710/announce",
+	"udp://tracker.zembed.com:6969/announce",
+	"udp://tracker.dump.cl:6969/announce",
+	"udp://tracker.leechers-paradise.org:6969/announce",
+	"udp://tracker.zerobytes.xyz:1337/announce",
+	"udp://tracker.altrosky.nl:6969/announce",
+	"udp://tracker.srv00.com:6969/announce",
+	"udp://tracker.filemail.com:6969/announce",
+	"udp://tracker.qu.ax:6969/announce",
+	"udp://tracker.fnix.net:6969/announce",
+	"udp://tracker.swatech.info:2710/announce",
+	"udp://tracker.v6speed.org:6969/announce",
+	"udp://tracker.ddunlimited.net:6969/announce",
+	"udp://tracker.auctor.tv:6969/announce",
+	"udp://tracker.beeimg.com:6969/announce",
+	"udp://tracker.edvd.top:2710/announce",
+	"udp://tracker.kikikooki.org:6969/announce",
+	"udp://tracker.torrust-demo.com:6969/announce",
+	"udp://tracker.lelux.fi:6969/announce",
+	"udp://tracker.army:6969/announce",
+	"udp://tracker.corps.is:6969/announce",
+	"udp://tracker.dyn.im:6969/announce",
+	// http/https trackers
+	"http://nyaa.tracker.wf:7777/announce",
+	"http://tracker.opentrackr.org:1337/announce",
+	"https://tracker.tamersunion.org:443/announce",
+	"https://tracker.lilithraws.org:443/announce",
+	"https://tr.ready4.icu:2096/announce",
+	"http://tracker.renapp.cn:6969/announce",
+	"http://tracker.files.fm:6969/announce",
+	// webtorrent websocket trackers
+	"wss://tracker.openwebtorrent.com",
+	"wss://tracker.btorrent.xyz",
+	"wss://tracker.fastcast.nz",
 }
 
-// withTrackers appends the tracker set to magnet URIs, matching the original
-// behaviour of always announcing to every known tracker.
+// GetTrackersCount returns how many trackers are configured.
+func GetTrackersCount() int {
+	return len(engineTrackers)
+}
+
+// withTrackers appends all configured trackers to a magnet URI.
 func withTrackers(uri string) string {
 	if !strings.HasPrefix(uri, "magnet:") {
 		return uri
@@ -263,7 +309,16 @@ func StashMeta(t *torrent.Torrent) {
 	os.Rename(tmp.Name(), path)
 }
 
-var mirrorClient = &http.Client{Timeout: 8 * time.Second}
+var mirrorClient = &http.Client{
+	Timeout: 6 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        50,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     60 * time.Second,
+		DisableCompression:  false,
+		ForceAttemptHTTP2:   true,
+	},
+}
 
 // PrimeMetadata races the disk cache and public .torrent mirrors against the
 // normal DHT/tracker metadata exchange. SetInfoBytes verifies the infohash
@@ -284,6 +339,7 @@ func PrimeMetadata(t *torrent.Torrent, uri string) {
 	for _, u := range []string{
 		"https://itorrents.org/torrent/" + hex + ".torrent",
 		"https://btcache.me/torrent/" + hex,
+		"https://torrage.info/torrent.php?h=" + hex,
 	} {
 		resp, err := mirrorClient.Get(u)
 		if err != nil {

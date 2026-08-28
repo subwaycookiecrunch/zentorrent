@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -42,11 +43,36 @@ type TorznabClient struct {
 }
 
 func NewTorznabClient(eps []Endpoint) *TorznabClient {
+	return NewTorznabClientWithHTTP(eps, nil)
+}
+
+func NewTorznabClientWithHTTP(eps []Endpoint, hc *http.Client) *TorznabClient {
+	if hc == nil {
+		hc = &http.Client{
+			Timeout: 20 * time.Second,
+			Transport: &http.Transport{
+				Proxy: func(req *http.Request) (*url.URL, error) {
+					if strings.HasPrefix(req.URL.Host, "127.0.0.1") || strings.HasPrefix(req.URL.Host, "localhost") {
+						return nil, nil
+					}
+					return http.ProxyFromEnvironment(req)
+				},
+				DialContext: (&net.Dialer{
+					Timeout:   6 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 20,
+				IdleConnTimeout:     90 * time.Second,
+				TLSHandshakeTimeout: 6 * time.Second,
+				DisableCompression:  false,
+				ForceAttemptHTTP2:   true,
+			},
+		}
+	}
 	return &TorznabClient{
 		endpoints: append([]Endpoint(nil), eps...),
-		hc: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		hc:        hc,
 	}
 }
 

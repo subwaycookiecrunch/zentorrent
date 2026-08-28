@@ -5,8 +5,8 @@ import (
 	"encoding/base32"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -181,21 +181,34 @@ func TestBuildQueryURL(t *testing.T) {
 	}
 }
 
+type mockRoundTripper func(req *http.Request) (*http.Response, error)
+
+func (m mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) { return m(req) }
+
 func TestSearchConcurrentAcrossEndpoints(t *testing.T) {
-	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(400 * time.Millisecond)
-		w.Write([]byte(sampleTorznabXML(t)))
-	}))
-	defer slow.Close()
-
-	fast := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(strings.ReplaceAll(sampleTorznabXML(t), "AMIABLE", "GECKOS")))
-	}))
-	defer fast.Close()
-
-	client := NewTorznabClient([]Endpoint{
-		{Name: "slow", BaseURL: slow.URL, APIKey: "k"},
-		{Name: "fast", BaseURL: fast.URL, APIKey: "k"},
+	client := NewTorznabClientWithHTTP([]Endpoint{
+		{Name: "slow", BaseURL: "https://slow.test/api", APIKey: "k"},
+		{Name: "fast", BaseURL: "https://fast.test/api", APIKey: "k"},
+	}, &http.Client{
+		Transport: mockRoundTripper(func(req *http.Request) (*http.Response, error) {
+			if strings.Contains(req.URL.Host, "slow") {
+				select {
+				case <-time.After(400 * time.Millisecond):
+				case <-req.Context().Done():
+					return nil, req.Context().Err()
+				}
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(strings.NewReader(sampleTorznabXML(t))),
+					Header:     make(http.Header),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(strings.ReplaceAll(sampleTorznabXML(t), "AMIABLE", "GECKOS"))),
+				Header:     make(http.Header),
+			}, nil
+		}),
 	})
 
 	start := time.Now()
