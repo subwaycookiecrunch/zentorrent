@@ -21,10 +21,10 @@ jobs:
       - name: Build
         run: |
           mkdir -p dist
-          GOOS=windows GOARCH=amd64 go build -o dist/zentorrent-windows-amd64.exe .
-          GOOS=darwin GOARCH=amd64 go build -o dist/zentorrent-darwin-amd64 .
-          GOOS=darwin GOARCH=arm64 go build -o dist/zentorrent-darwin-arm64 .
-          GOOS=linux GOARCH=amd64 go build -o dist/zentorrent-linux-amd64 .
+          GOOS=windows GOARCH=amd64 go build -o dist/zentorrent-windows-amd64.exe ./cmd/zentorrent
+          GOOS=darwin GOARCH=amd64 go build -o dist/zentorrent-darwin-amd64 ./cmd/zentorrent
+          GOOS=darwin GOARCH=arm64 go build -o dist/zentorrent-darwin-arm64 ./cmd/zentorrent
+          GOOS=linux GOARCH=amd64 go build -o dist/zentorrent-linux-amd64 ./cmd/zentorrent
 
       - name: Release
         uses: softprops/action-gh-release@v2
