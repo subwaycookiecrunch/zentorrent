@@ -3,552 +3,941 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZenTorrent — Stream any torrent instantly in terminal or browser</title>
-<meta name="description" content="A lightweight, single-binary media engine in Go. Stream torrents with real-time dialogue clarity EQ, watch parties, floating mini-player, and zero buffering.">
+<title>ZenTorrent — Zero-Buffer Cinema & Torrent Engine</title>
+<meta name="description" content="A single binary in Go that streams any torrent or cinema link with real-time dialogue clarity EQ, synced watch parties, and floating mini-player.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
 
 <style>
   :root {
-    --bg-base: #070709;
-    --bg-surface: #0f0f14;
-    --bg-card: rgba(255, 255, 255, 0.03);
-    --bg-card-hover: rgba(255, 255, 255, 0.06);
-    --accent: #8b5cf6;
-    --accent-glow: rgba(139, 92, 246, 0.35);
-    --accent-light: #a78bfa;
-    --text-primary: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-hover: rgba(139, 92, 246, 0.4);
-    --radius: 12px;
+    --bg: #050508;
+    --surface: #0b0b10;
+    --surface-elevated: #12121a;
+    --surface-card: rgba(18, 18, 26, 0.65);
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-highlight: rgba(168, 85, 247, 0.4);
+    --accent: #9333ea;
+    --accent-vibrant: #a855f7;
+    --accent-cyan: #06b6d4;
+    --accent-emerald: #10b981;
+    --accent-amber: #f59e0b;
+    --text-high: #f8fafc;
+    --text-mid: #94a3b8;
+    --text-low: #475569;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 22px;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
-    background-color: var(--bg-base);
-    color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    line-height: 1.6;
+    background-color: var(--bg);
+    color: var(--text-high);
+    font-family: var(--font-sans);
     overflow-x: hidden;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    selection-background-color: var(--accent);
+    selection-color: #fff;
   }
 
-  /* Ambient Backdrop Glow */
-  .glow-mesh {
+  ::selection { background: rgba(168, 85, 247, 0.35); color: #fff; }
+
+  /* Background Grid & Interactive Spotlight */
+  .canvas-layer {
     position: fixed;
-    top: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 1000px;
-    height: 550px;
-    background: radial-gradient(circle at 50% 10%, rgba(139, 92, 246, 0.18), rgba(56, 189, 248, 0.08), transparent 70%);
-    filter: blur(80px);
+    top: 0; left: 0; width: 100vw; height: 100vh;
     pointer-events: none;
     z-index: 0;
   }
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 15%, black 40%, transparent 80%);
+  }
+  .spotlight-glow {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 900px; height: 500px;
+    background: radial-gradient(circle at 50% 20%, rgba(168, 85, 247, 0.18), rgba(6, 182, 212, 0.08), transparent 70%);
+    filter: blur(90px);
+    opacity: 0.85;
+  }
 
-  /* Navigation */
+  /* Header Navigation */
   header {
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: 70px;
-    background: rgba(7, 7, 9, 0.75);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border);
+    height: 64px;
+    background: rgba(5, 5, 8, 0.75);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 32px;
+    padding: 0 40px;
     z-index: 100;
   }
-  .nav-brand {
+  .brand-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     text-decoration: none;
-    color: var(--text-primary);
-    font-weight: 800;
-    font-size: 17px;
-    letter-spacing: -0.5px;
+    color: var(--text-high);
   }
-  .nav-logo-badge {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #8b5cf6, #6366f1);
-    border-radius: 8px;
+  .brand-symbol {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, #a855f7, #6366f1);
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
+    font-size: 15px;
     color: #fff;
-    box-shadow: 0 0 16px var(--accent-glow);
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.5);
   }
-  .nav-links {
+  .brand-title {
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: -0.4px;
+  }
+  .brand-version {
+    font-size: 10.5px;
+    font-family: var(--font-mono);
+    padding: 2px 7px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    color: var(--text-mid);
+  }
+
+  .nav-actions {
     display: flex;
     align-items: center;
     gap: 20px;
   }
-  .nav-link {
-    color: var(--text-secondary);
+  .nav-item {
+    color: var(--text-mid);
     text-decoration: none;
     font-size: 13.5px;
     font-weight: 500;
     transition: color 0.15s ease;
   }
-  .nav-link:hover { color: var(--text-primary); }
+  .nav-item:hover { color: var(--text-high); }
 
-  .btn-star {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 14px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s ease;
-  }
-  .btn-star:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: var(--accent);
-    transform: translateY(-1px);
-  }
-
-  /* Hero Section */
-  .hero-section {
-    position: relative;
-    z-index: 1;
-    max-width: 900px;
-    margin: 140px auto 40px;
-    padding: 0 24px;
-    text-align: center;
-  }
-  .release-pill {
+  .btn-star-header {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     padding: 6px 14px;
-    background: rgba(139, 92, 246, 0.1);
-    border: 1px solid rgba(139, 92, 246, 0.25);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-high);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-star-header:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+  .star-count-badge {
+    background: rgba(168, 85, 247, 0.18);
+    color: var(--accent-vibrant);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+
+  /* Hero Section */
+  .hero {
+    position: relative;
+    z-index: 1;
+    max-width: 1040px;
+    margin: 130px auto 40px;
+    padding: 0 24px;
+    text-align: center;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    background: rgba(168, 85, 247, 0.08);
+    border: 1px solid rgba(168, 85, 247, 0.25);
     border-radius: 999px;
     font-size: 12.5px;
     font-weight: 600;
-    color: var(--accent-light);
+    color: var(--accent-vibrant);
     margin-bottom: 24px;
   }
-  .release-pill-dot {
-    width: 6px;
-    height: 6px;
-    background: #10b981;
+  .pulse-dot {
+    width: 6px; height: 6px;
+    background: var(--accent-emerald);
     border-radius: 50%;
-    box-shadow: 0 0 8px #10b981;
+    box-shadow: 0 0 8px var(--accent-emerald);
+    animation: pulse 2s infinite;
   }
-  h1 {
-    font-size: clamp(38px, 6vw, 64px);
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -1.5px;
-    margin-bottom: 20px;
-    background: linear-gradient(180deg, #ffffff 30%, #a1a1aa 100%);
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.6; }
+  }
+
+  .hero h1 {
+    font-size: clamp(42px, 6.5vw, 76px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 22px;
+    background: linear-gradient(180deg, #ffffff 40%, rgba(255, 255, 255, 0.65) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
-  .hero-subtitle {
-    font-size: clamp(16px, 2.2vw, 19px);
-    color: var(--text-secondary);
-    max-width: 680px;
-    margin: 0 auto 36px;
+
+  .hero-tagline {
+    font-size: clamp(16px, 2.2vw, 20px);
+    color: var(--text-mid);
+    max-width: 660px;
+    margin: 0 auto 38px;
     font-weight: 400;
+    line-height: 1.6;
   }
 
-  /* Action Buttons */
-  .hero-cta-group {
+  /* CTAs */
+  .hero-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 14px;
-    margin-bottom: 32px;
+    margin-bottom: 36px;
   }
-  .btn-primary-download {
+  .btn-download-main {
     display: inline-flex;
     align-items: center;
     gap: 10px;
     padding: 14px 28px;
-    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: #ffffff;
+    color: #050508;
     border-radius: 10px;
-    color: #ffffff;
     font-size: 14.5px;
     font-weight: 700;
     text-decoration: none;
-    box-shadow: 0 8px 30px var(--accent-glow);
+    box-shadow: 0 0 35px rgba(255, 255, 255, 0.25);
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .btn-primary-download:hover {
+  .btn-download-main:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.55);
+    box-shadow: 0 0 45px rgba(255, 255, 255, 0.45);
+    background: #f1f5f9;
   }
-  .btn-secondary {
+  .btn-download-main svg { fill: currentColor; }
+
+  .btn-ghost-gh {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 14px 24px;
+    gap: 9px;
+    padding: 14px 22px;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     border-radius: 10px;
-    color: var(--text-primary);
+    color: var(--text-high);
     font-size: 14.5px;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.2s ease;
   }
-  .btn-secondary:hover {
+  .btn-ghost-gh:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
   }
 
-  /* Quick Install Snippet */
-  .install-box {
+  /* Terminal Snippet Box */
+  .cli-snippet-wrap {
     display: inline-flex;
     align-items: center;
     gap: 12px;
-    background: #0d0d12;
-    border: 1px solid var(--border);
+    background: rgba(11, 11, 16, 0.8);
+    border: 1px solid var(--border-subtle);
     border-radius: 10px;
-    padding: 10px 16px;
-    font-family: 'JetBrains Mono', monospace;
+    padding: 9px 18px;
+    font-family: var(--font-mono);
     font-size: 13px;
-    color: #c4b5fd;
-    max-width: 90vw;
+    color: #e2e8f0;
     cursor: pointer;
+    backdrop-filter: blur(12px);
     transition: all 0.2s ease;
   }
-  .install-box:hover {
-    border-color: var(--accent);
-    background: #111118;
+  .cli-snippet-wrap:hover {
+    border-color: var(--accent-vibrant);
+    background: rgba(18, 18, 26, 0.9);
   }
-  .install-prompt { color: var(--text-muted); }
-  .copy-btn-icon {
-    color: var(--text-muted);
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-  }
+  .cli-prompt { color: var(--text-low); }
+  .cli-text { color: #c084fc; font-weight: 500; }
+  .cli-copy-icon { color: var(--text-mid); font-size: 13px; margin-left: 4px; }
 
-  /* Showcase Visuals */
-  .showcase-container {
-    max-width: 1000px;
-    margin: 60px auto 100px;
+  /* Interactive Interactive Dual Experience Stage */
+  .stage-section {
+    max-width: 1060px;
+    margin: 50px auto 120px;
     padding: 0 24px;
     position: relative;
     z-index: 1;
   }
-  .terminal-window {
-    background: #0a0a0f;
-    border: 1px solid var(--border);
-    border-radius: 14px;
+  .stage-frame {
+    background: var(--surface-card);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
     overflow: hidden;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.85);
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.9), 0 0 50px rgba(168, 85, 247, 0.05);
   }
-  .terminal-header {
-    background: rgba(255, 255, 255, 0.02);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 18px;
+
+  /* Stage Tab Switcher */
+  .stage-nav {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border-subtle);
   }
-  .terminal-dots {
+  .stage-window-controls {
     display: flex;
-    gap: 6px;
+    gap: 7px;
   }
-  .terminal-dot {
-    width: 10px;
-    height: 10px;
+  .stage-window-dot {
+    width: 11px; height: 11px;
     border-radius: 50%;
-    background: #27272a;
+    background: rgba(255, 255, 255, 0.12);
   }
-  .terminal-body {
-    padding: 24px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13.5px;
-    line-height: 1.7;
-    color: #e4e4e7;
-    overflow-x: auto;
+  .tab-pill-group {
+    display: flex;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
   }
-  .t-cyan { color: #38bdf8; }
-  .t-purple { color: #a78bfa; }
-  .t-green { color: #34d399; }
-  .t-yellow { color: #fbbf24; }
-  .t-dim { color: #71717a; }
+  .tab-pill-btn {
+    padding: 5px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-mid);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tab-pill-btn.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-high);
+  }
 
-  /* Features Grid */
-  .features-section {
-    max-width: 1000px;
-    margin: 0 auto 120px;
+  /* View 1: Cinema Studio Viewport */
+  .view-cinema {
+    display: block;
+    padding: 32px;
+  }
+  .cinema-mock-player {
+    aspect-ratio: 16/9;
+    max-height: 480px;
+    width: 100%;
+    background: radial-gradient(circle at 50% 50%, #151522 0%, #08080c 100%);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 24px;
+  }
+  .cinema-player-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 2;
+  }
+  .movie-title-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .movie-title-main { font-weight: 800; font-size: 16px; color: #fff; }
+  .movie-tag-4k {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 2px 6px;
+    background: linear-gradient(135deg, #a855f7, #06b6d4);
+    border-radius: 4px;
+    color: #fff;
+  }
+
+  .cinema-center-artwork {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .artwork-gradient-glow {
+    position: absolute;
+    width: 320px; height: 180px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.25), transparent 70%);
+    filter: blur(40px);
+  }
+
+  /* Equalizer Animation Bars */
+  .eq-visualizer-strip {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 36px;
+    z-index: 2;
+  }
+  .eq-bar {
+    width: 4px;
+    background: linear-gradient(to top, var(--accent-vibrant), var(--accent-cyan));
+    border-radius: 2px;
+    animation: bounceEQ 1.2s ease-in-out infinite alternate;
+  }
+  .eq-bar:nth-child(1) { height: 12px; animation-delay: 0.1s; }
+  .eq-bar:nth-child(2) { height: 26px; animation-delay: 0.3s; }
+  .eq-bar:nth-child(3) { height: 18px; animation-delay: 0.05s; }
+  .eq-bar:nth-child(4) { height: 34px; animation-delay: 0.4s; }
+  .eq-bar:nth-child(5) { height: 22px; animation-delay: 0.2s; }
+  .eq-bar:nth-child(6) { height: 28px; animation-delay: 0.5s; }
+  .eq-bar:nth-child(7) { height: 16px; animation-delay: 0.15s; }
+  .eq-bar:nth-child(8) { height: 32px; animation-delay: 0.35s; }
+
+  @keyframes bounceEQ {
+    0% { transform: scaleY(0.3); }
+    100% { transform: scaleY(1); }
+  }
+
+  .cinema-player-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 10px 16px;
+    z-index: 2;
+  }
+  .cinema-controls-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .cinema-btn-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .cinema-btn-pill.active {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: var(--accent-vibrant);
+    color: #c084fc;
+  }
+
+  /* View 2: Terminal TUI Viewport */
+  .view-terminal {
+    display: none;
+    padding: 32px;
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.8;
+  }
+  .t-cyan { color: #38bdf8; font-weight: 600; }
+  .t-purple { color: #c084fc; font-weight: 600; }
+  .t-emerald { color: #34d399; font-weight: 600; }
+  .t-amber { color: #fbbf24; font-weight: 600; }
+  .t-dim { color: #64748b; }
+  .t-white { color: #f8fafc; }
+
+  /* Bento Grid Features Section */
+  .bento-section {
+    max-width: 1060px;
+    margin: 0 auto 130px;
     padding: 0 24px;
     position: relative;
     z-index: 1;
   }
-  .section-header {
+  .bento-header {
     text-align: center;
-    margin-bottom: 48px;
+    margin-bottom: 54px;
   }
-  .section-header h2 {
-    font-size: 32px;
+  .bento-header h2 {
+    font-size: clamp(30px, 4.5vw, 44px);
     font-weight: 800;
-    letter-spacing: -0.8px;
-    margin-bottom: 12px;
+    letter-spacing: -1.2px;
+    margin-bottom: 14px;
   }
-  .section-header p {
-    color: var(--text-secondary);
-    font-size: 15.5px;
+  .bento-header p {
+    color: var(--text-mid);
+    font-size: 16px;
+    max-width: 580px;
+    margin: 0 auto;
   }
 
-  .features-grid {
+  .bento-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(12, 1fr);
     gap: 20px;
   }
-  .feature-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 28px;
-    transition: all 0.25s ease;
+
+  .bento-card {
+    background: var(--surface-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .feature-card:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--border-hover);
+  .bento-card:hover {
+    border-color: rgba(168, 85, 247, 0.35);
+    background: rgba(24, 24, 34, 0.75);
     transform: translateY(-3px);
   }
-  .feature-icon {
-    font-size: 24px;
-    margin-bottom: 16px;
-    display: inline-block;
+
+  .col-8 { grid-column: span 8; }
+  .col-4 { grid-column: span 4; }
+  .col-6 { grid-column: span 6; }
+  .col-12 { grid-column: span 12; }
+
+  @media (max-width: 860px) {
+    .col-8, .col-4, .col-6 { grid-column: span 12; }
+    .nav-links { display: none; }
   }
-  .feature-card h3 {
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: #ffffff;
+
+  .card-icon-bubble {
+    width: 44px; height: 44px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 20px;
   }
-  .feature-card p {
-    font-size: 13.5px;
-    color: var(--text-secondary);
-    line-height: 1.6;
+  .bento-card h3 {
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .bento-card p {
+    font-size: 14px;
+    color: var(--text-mid);
+    line-height: 1.65;
+  }
+
+  /* Interactive Reaction Particles in Card */
+  .reaction-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .reaction-emoji-btn {
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .reaction-emoji-btn:hover {
+    transform: scale(1.2);
+    background: rgba(168, 85, 247, 0.2);
   }
 
   /* Footer */
   footer {
-    border-top: 1px solid var(--border);
-    padding: 40px 32px;
+    border-top: 1px solid var(--border-subtle);
+    padding: 50px 32px;
     text-align: center;
-    color: var(--text-muted);
-    font-size: 13px;
+    background: rgba(5, 5, 8, 0.85);
     position: relative;
     z-index: 1;
   }
-  footer a {
-    color: var(--text-secondary);
-    text-decoration: none;
+  .footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 18px;
   }
-  footer a:hover { color: var(--text-primary); }
+  .footer-links a {
+    color: var(--text-mid);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: color 0.15s ease;
+  }
+  .footer-links a:hover { color: #fff; }
+  .footer-copy {
+    color: var(--text-low);
+    font-size: 12.5px;
+  }
 
-  /* Toast */
-  .toast {
+  /* Toast Notification */
+  .toast-popup {
     position: fixed;
-    bottom: 24px;
+    bottom: 28px;
     left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: #18181b;
-    border: 1px solid var(--border-hover);
+    transform: translateX(-50%) translateY(120px);
+    background: #181824;
+    border: 1px solid var(--border-highlight);
     color: #fff;
-    padding: 10px 20px;
-    border-radius: 8px;
+    padding: 10px 22px;
+    border-radius: 999px;
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.85);
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast-popup.visible { transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
-<div class="glow-mesh"></div>
+<div class="canvas-layer">
+  <div class="bg-grid"></div>
+  <div class="spotlight-glow"></div>
+</div>
 
 <!-- Header -->
 <header>
-  <a href="#" class="nav-brand">
-    <div class="nav-logo-badge">Z</div>
-    <span>ZenTorrent</span>
+  <a href="#" class="brand-wrap">
+    <div class="brand-symbol">Z</div>
+    <span class="brand-title">ZenTorrent</span>
+    <span class="brand-version">v4.0.0</span>
   </a>
-  <div class="nav-links">
-    <a href="#features" class="nav-link">Features</a>
-    <a href="https://github.com/subwaycookiecrunch/zentorrent/releases" class="nav-link" target="_blank">Releases</a>
-    <a href="https://github.com/subwaycookiecrunch/zentorrent" class="btn-star" target="_blank">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-      <span>Star on GitHub</span>
+
+  <div class="nav-actions">
+    <a href="#features" class="nav-item">Features</a>
+    <a href="https://github.com/subwaycookiecrunch/zentorrent/releases" class="nav-item" target="_blank">Releases</a>
+    <a href="https://github.com/subwaycookiecrunch/zentorrent" class="btn-star-header" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      <span>Star</span>
+      <span class="star-count-badge" id="star-count">91</span>
     </a>
   </div>
 </header>
 
 <!-- Hero Section -->
-<section class="hero-section">
-  <div class="release-pill">
-    <span class="release-pill-dot"></span>
-    <span>ZenTorrent v4.0.0 is Live</span>
+<section class="hero">
+  <div class="status-badge">
+    <span class="pulse-dot"></span>
+    <span>v4.0.0 Architecture • Zero Buffering</span>
   </div>
+
   <h1>Stream any torrent instantly.<br>In terminal or browser.</h1>
-  <p class="hero-subtitle">
-    A lightweight, single-binary media engine in Go. Real-time audio dialogue boost, watch parties, floating mini-player, and zero buffering.
+
+  <p class="hero-tagline">
+    A single static Go binary. Real-time dialogue clarity audio DSP, synchronized watch parties, and floating mini-player.
   </p>
 
-  <div class="hero-cta-group">
-    <a id="btn-detected-download" href="https://github.com/subwaycookiecrunch/zentorrent/releases/tag/v4.0.0" class="btn-primary-download" target="_blank">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-      <span id="download-text">Download for macOS</span>
+  <div class="hero-actions">
+    <a id="btn-hero-download" href="https://github.com/subwaycookiecrunch/zentorrent/releases/tag/v4.0.0" class="btn-download-main" target="_blank">
+      <svg width="17" height="17" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+      <span id="label-os-download">Download for macOS</span>
     </a>
-    <a href="https://github.com/subwaycookiecrunch/zentorrent" class="btn-secondary" target="_blank">
+
+    <a href="https://github.com/subwaycookiecrunch/zentorrent" class="btn-ghost-gh" target="_blank">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-      <span>View Source</span>
+      <span>GitHub Repo</span>
     </a>
   </div>
 
   <div>
-    <div class="install-box" onclick="copyInstallCmd()">
-      <span class="install-prompt">$</span>
-      <span id="cmd-snippet">curl -sSL https://raw.githubusercontent.com/subwaycookiecrunch/zentorrent/main/install.sh | bash</span>
-      <span class="copy-btn-icon" id="copy-icon">📋</span>
+    <div class="cli-snippet-wrap" onclick="copyInstallCmd()">
+      <span class="cli-prompt">$</span>
+      <span class="cli-text" id="install-snippet">curl -sSL https://raw.githubusercontent.com/subwaycookiecrunch/zentorrent/main/install.sh | bash</span>
+      <span class="cli-copy-icon">📋</span>
     </div>
   </div>
 </section>
 
-<!-- Terminal Showcase -->
-<div class="showcase-container">
-  <div class="terminal-window">
-    <div class="terminal-header">
-      <div class="terminal-dots">
-        <div class="terminal-dot"></div>
-        <div class="terminal-dot"></div>
-        <div class="terminal-dot"></div>
+<!-- Dual Stage Interactive Showcase -->
+<section class="stage-section">
+  <div class="stage-frame">
+    <div class="stage-nav">
+      <div class="stage-window-controls">
+        <div class="stage-window-dot"></div>
+        <div class="stage-window-dot"></div>
+        <div class="stage-window-dot"></div>
       </div>
-      <span style="font-size: 11.5px; font-weight: 600; color: var(--text-muted);">zentorrent v4.0.0</span>
-      <div style="width: 30px;"></div>
+
+      <div class="tab-pill-group">
+        <button class="tab-pill-btn active" id="tab-btn-cinema" onclick="switchStage('cinema')">🎬 Cinema Studio</button>
+        <button class="tab-pill-btn" id="tab-btn-terminal" onclick="switchStage('terminal')">⚡ Terminal TUI</button>
+      </div>
+
+      <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-low);">60 FPS LIVE BUFFER</div>
     </div>
-    <div class="terminal-body">
-      <div><span class="t-dim">$</span> <span class="t-cyan">zentorrent search</span> <span class="t-yellow">"Interstellar 4K"</span></div>
-      <div class="t-dim">> Initializing BitTorrent engine & scraping 54 Tier-1 DHT trackers...</div>
-      <div class="t-green">✔ Found: Interstellar.2014.2160p.UHD.HDR.Dolby.Atmos (1,188 Seeders • 24.5 GB)</div>
-      <div class="t-purple">> Buffering head & tail pieces [████████████████████] 100% Ready (8ms)</div>
-      <div><span class="t-dim">> Stream launched:</span> <span class="t-cyan">http://localhost:8888</span> <span class="t-dim">(Audio EQ: Dialogue Boost Enabled)</span></div>
+
+    <!-- View 1: Cinema Studio -->
+    <div class="view-cinema" id="stage-cinema">
+      <div class="cinema-mock-player">
+        <div class="cinema-player-top">
+          <div class="movie-title-badge">
+            <span class="movie-title-main">Interstellar</span>
+            <span class="movie-tag-4k">4K UHD</span>
+            <span style="font-size: 12px; color: var(--text-mid);">• 1,188 Peers</span>
+          </div>
+
+          <!-- Real-Time Equalizer Waves -->
+          <div class="eq-visualizer-strip" title="Audio EQ Dialogue Lift Active">
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+          </div>
+        </div>
+
+        <div class="cinema-center-artwork">
+          <div class="artwork-gradient-glow"></div>
+          <div style="font-size: 40px; margin-bottom: 8px;">🌌</div>
+          <div style="font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">STREAMING INSTANTLY (0s BUFFER)</div>
+        </div>
+
+        <div class="cinema-player-bottom">
+          <div class="cinema-controls-left">
+            <div class="cinema-btn-pill active" onclick="toggleAudioDemo()">
+              <span>🎧</span>
+              <span id="audio-demo-txt">Dialogue Lift: ON</span>
+            </div>
+            <div class="cinema-btn-pill" onclick="triggerPartyDemo()">
+              <span>🍿</span>
+              <span>Watch Party (PIN: 8888)</span>
+            </div>
+          </div>
+
+          <div style="font-size: 12px; font-family: var(--font-mono); color: var(--accent-emerald);">
+            ● 24.5 MB/s • 54 Trackers Injected
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View 2: Terminal TUI -->
+    <div class="view-terminal" id="stage-terminal">
+      <div><span class="t-dim">$</span> <span class="t-cyan">zentorrent search</span> <span class="t-amber">"Dune Part Two 2160p"</span></div>
+      <div class="t-dim">> Discovering swarms across 1337x, YTS, Nyaa & BEP-51 DHT crawler...</div>
+      <div class="t-emerald">✔ Matched: Dune.Part.Two.2024.2160p.UHD.HDR.Atmos (2,410 Seeders • 28.2 GB)</div>
+      <div class="t-purple">> VOD Piece Scheduler: buffering [0..4] and [982..986] pieces...</div>
+      <div class="t-white">> [████████████████████████████████] 100% Ready (14ms latency)</div>
+      <div><span class="t-dim">> Launched local streaming server:</span> <span class="t-cyan">http://localhost:8888</span></div>
+      <div><span class="t-dim">> Press</span> <span class="t-amber">[Space]</span> <span class="t-dim">Pause/Play •</span> <span class="t-amber">[E]</span> <span class="t-dim">Audio EQ •</span> <span class="t-amber">[I]</span> <span class="t-dim">PiP Mini •</span> <span class="t-amber">[Q]</span> <span class="t-dim">Quit</span></div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- Features Section -->
-<section class="features-section" id="features">
-  <div class="section-header">
-    <h2>Engineered for pure speed.</h2>
-    <p>Everything you need for seamless streaming packed into a single Go binary.</p>
+<!-- Bento Grid Features -->
+<section class="bento-section" id="features">
+  <div class="bento-header">
+    <h2>Built without compromises.</h2>
+    <p>Modern streaming engineering packed into a lightweight, standalone Go binary.</p>
   </div>
 
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon">🎧</div>
-      <h3>Dialogue Clarity & Audio EQ</h3>
-      <p>Real-time Web Audio DSP inside the player. Lifts whispered dialogue and smooths loud explosion spikes with 6 custom audio presets.</p>
+  <div class="bento-grid">
+    <!-- Feature 1: Audio EQ -->
+    <div class="bento-card col-8">
+      <div class="card-icon-bubble">🎧</div>
+      <h3>Real-Time Dialogue Booster & Spatial EQ</h3>
+      <p>
+        Web Audio API digital signal processing built right into the player. Intelligently amplifies whispered movie lines while compressing loud explosions. Features 6 studio presets: Vocal Clarity, 7.1 Virtual Surround, and Bass Boost.
+      </p>
     </div>
 
-    <div class="feature-card">
-      <div class="feature-icon">⚡</div>
-      <h3>Swarm Turbo Tracker Injection</h3>
-      <p>Automatically injects 50+ live public Tier-1 BitTorrent trackers on the fly to maximize download speed and find seeders for rare torrents.</p>
+    <!-- Feature 2: Swarm Turbo -->
+    <div class="bento-card col-4">
+      <div class="card-icon-bubble">⚡</div>
+      <h3>54 Tier-1 DHT Trackers</h3>
+      <p>
+        Automatically injects 54 public UDP, HTTP, and WebSocket BitTorrent trackers on the fly to maximize swarm download speeds and unearth rare seeders.
+      </p>
     </div>
 
-    <div class="feature-card">
-      <div class="feature-icon">🖼️</div>
-      <h3>Floating Mini-Player (PiP)</h3>
-      <p>Press <code>I</code> to pop the stream into a floating corner player so you can browse other movies or search without interrupting playback.</p>
-    </div>
-
-    <div class="feature-card">
-      <div class="feature-icon">🍿</div>
+    <!-- Feature 3: Watch Party -->
+    <div class="bento-card col-4">
+      <div class="card-icon-bubble">🍿</div>
       <h3>Watch Party Synchronization</h3>
-      <p>Host watch rooms with sub-millisecond playback sync, room PINs, live chat, floating reaction emojis, and shared playlist queues.</p>
+      <p>
+        Watch movies together with synchronized playback, private room PINs, live chat, and floating reaction emojis.
+      </p>
+      <div class="reaction-bar">
+        <button class="reaction-emoji-btn" onclick="fireReaction('🔥')">🔥</button>
+        <button class="reaction-emoji-btn" onclick="fireReaction('🍿')">🍿</button>
+        <button class="reaction-emoji-btn" onclick="fireReaction('🚀')">🚀</button>
+        <button class="reaction-emoji-btn" onclick="fireReaction('❤️')">❤️</button>
+      </div>
     </div>
 
-    <div class="feature-card">
-      <div class="feature-icon">🔒</div>
+    <!-- Feature 4: PiP Mini Player -->
+    <div class="bento-card col-4">
+      <div class="card-icon-bubble">🖼️</div>
+      <h3>Floating Mini-Player (PiP)</h3>
+      <p>
+        Press <code>I</code> to detach the stream into a floating corner mini-player so you can multitask or browse other movies without interrupting playback.
+      </p>
+    </div>
+
+    <!-- Feature 5: Zero Cost Private Tunnel -->
+    <div class="bento-card col-4">
+      <div class="card-icon-bubble">🔒</div>
       <h3>Zero-Cost Private Tunnel</h3>
-      <p>Run <code>zentorrent watchonline</code> to generate a private HTTPS session link for your phone, iPad, or TV with zero port forwarding.</p>
-    </div>
-
-    <div class="feature-card">
-      <div class="feature-icon">🔍</div>
-      <h3>Unified Multi-Tier Search</h3>
-      <p>Seamlessly queries Debrid caching (Real-Debrid, TorBox), live P2P torrent swarms (1337x, YTS, TorrentGalaxy, Nyaa), and direct HLS.</p>
+      <p>
+        Run <code>zentorrent watchonline</code> to generate an ephemeral encrypted HTTPS link for your TV, iPad, or phone with zero port forwarding.
+      </p>
     </div>
   </div>
 </section>
 
 <!-- Footer -->
 <footer>
-  <div style="margin-bottom: 12px;">
-    <a href="https://github.com/subwaycookiecrunch/zentorrent" target="_blank">GitHub</a> • 
-    <a href="https://github.com/subwaycookiecrunch/zentorrent/releases" target="_blank">Releases</a> • 
+  <div class="footer-links">
+    <a href="https://github.com/subwaycookiecrunch/zentorrent" target="_blank">GitHub</a>
+    <a href="https://github.com/subwaycookiecrunch/zentorrent/releases" target="_blank">Releases</a>
     <a href="https://github.com/subwaycookiecrunch/zentorrent/blob/main/LICENSE" target="_blank">MIT License</a>
   </div>
-  <div>ZenTorrent v4.0.0 • Open source & built with Go</div>
+  <div class="footer-copy">ZenTorrent v4.0.0 • Open source & built with Go</div>
 </footer>
 
-<div class="toast" id="toast">📋 Copied to clipboard!</div>
+<div class="toast-popup" id="toast-pop">
+  <span>📋</span>
+  <span id="toast-msg">Copied to clipboard!</span>
+</div>
 
 <script>
-  // Detect OS for 1-Click Download
+  // Dynamic OS Detection
   (function() {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const btn = document.getElementById('btn-detected-download');
-    const txt = document.getElementById('download-text');
+    const ua = navigator.userAgent.toLowerCase();
+    const btn = document.getElementById('btn-hero-download');
+    const label = document.getElementById('label-os-download');
     const base = 'https://github.com/subwaycookiecrunch/zentorrent/releases/download/v4.0.0/';
 
-    if (userAgent.includes('mac')) {
+    if (ua.includes('mac')) {
       btn.href = base + 'zentorrent-darwin-arm64';
-      txt.innerText = 'Download for macOS';
-    } else if (userAgent.includes('win')) {
+      label.innerText = 'Download for macOS';
+    } else if (ua.includes('win')) {
       btn.href = base + 'zentorrent-windows-amd64.exe';
-      txt.innerText = 'Download for Windows (64-bit)';
-    } else if (userAgent.includes('linux')) {
+      label.innerText = 'Download for Windows';
+    } else if (ua.includes('linux')) {
       btn.href = base + 'zentorrent-linux-amd64';
-      txt.innerText = 'Download for Linux (64-bit)';
+      label.innerText = 'Download for Linux';
     } else {
       btn.href = 'https://github.com/subwaycookiecrunch/zentorrent/releases/tag/v4.0.0';
-      txt.innerText = 'Download ZenTorrent v4.0.0';
+      label.innerText = 'Download ZenTorrent v4';
     }
   })();
 
+  // Live GitHub Star Fetcher
+  fetch('https://api.github.com/repos/subwaycookiecrunch/zentorrent')
+    .then(r => r.json())
+    .then(d => {
+      if (d.stargazers_count) {
+        document.getElementById('star-count').innerText = d.stargazers_count;
+      }
+    }).catch(() => {});
+
+  // Interactive Stage Switcher
+  function switchStage(type) {
+    const cTab = document.getElementById('tab-btn-cinema');
+    const tTab = document.getElementById('tab-btn-terminal');
+    const cView = document.getElementById('stage-cinema');
+    const tView = document.getElementById('stage-terminal');
+
+    if (type === 'cinema') {
+      cTab.classList.add('active');
+      tTab.classList.remove('active');
+      cView.style.display = 'block';
+      tView.style.display = 'none';
+    } else {
+      tTab.classList.add('active');
+      cTab.classList.remove('active');
+      tView.style.display = 'block';
+      cView.style.display = 'none';
+    }
+  }
+
+  function toggleAudioDemo() {
+    const txt = document.getElementById('audio-demo-txt');
+    if (txt.innerText.includes('ON')) {
+      txt.innerText = 'Dialogue Lift: BYPASS';
+      showToastMsg('🔇 Dialogue Boost Bypassed (Raw Audio)');
+    } else {
+      txt.innerText = 'Dialogue Lift: ON';
+      showToastMsg('🎧 Dialogue Clarity Boost (+6dB Speech)');
+    }
+  }
+
+  function triggerPartyDemo() {
+    showToastMsg('🍿 Watch Party Synced (0ms offset)');
+  }
+
+  function fireReaction(emoji) {
+    showToastMsg(`${emoji} Reaction broadcasted to room!`);
+  }
+
   function copyInstallCmd() {
-    const cmd = document.getElementById('cmd-snippet').innerText;
-    navigator.clipboard.writeText(cmd).then(() => {
-      showToast('📋 Install command copied to clipboard!');
+    const text = document.getElementById('install-snippet').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      showToastMsg('📋 Install snippet copied to clipboard!');
     }).catch(() => {
-      showToast('Install command selected');
+      showToastMsg('Command selected');
     });
   }
 
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.innerText = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2200);
+  function showToastMsg(msg) {
+    const toast = document.getElementById('toast-pop');
+    document.getElementById('toast-msg').innerText = msg;
+    toast.classList.add('visible');
+    setTimeout(() => toast.classList.remove('visible'), 2400);
   }
 </script>
 
