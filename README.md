@@ -1,106 +1,99 @@
-# ZenTorrent v4
+# ZenTorrent
 
-[![Website](https://img.shields.io/badge/Official_Website-zentorrent.vercel.app-d5a85b?style=for-the-badge&logo=vercel)](https://zentorrent.vercel.app/)
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=for-the-badge&logo=go)](https://go.dev/)
-[![Platform](https://img.shields.io/badge/Platform-macOS_%7C_Windows_%7C_Linux-7c3aed?style=for-the-badge)](https://zentorrent.vercel.app/)
+Terminal and web client for streaming torrents and music, with multi-source playback, watch party synchronization, and audio controls.
 
-> **Official Website & Downloads:** [zentorrent.vercel.app](https://zentorrent.vercel.app/)
-
-Terminal and web-based cinema & music streaming client with multi-source playback, YouTube & lossless music audio search, watch party synchronization, and integrated audio DSP controls.
+Website: [https://zentorrent.vercel.app](https://zentorrent.vercel.app)
 
 ---
 
-## 🚀 Download & Installation
+## Download and Installation
 
-Visit **[zentorrent.vercel.app](https://zentorrent.vercel.app/)** to get pre-built binaries or install via your terminal:
+Binaries and web installer are available on [zentorrent.vercel.app](https://zentorrent.vercel.app).
 
-### 🍎 macOS
+### macOS
 ```bash
 brew tap subwaycookiecrunch/tap
 brew install zentorrent
 ```
-*Or download the standalone Apple Silicon / Intel binary from [zentorrent.vercel.app](https://zentorrent.vercel.app/).*
 
-### 🪟 Windows
-Download the standalone executable `zentorrent.exe` directly from [zentorrent.vercel.app](https://zentorrent.vercel.app/) or run via PowerShell:
+### Windows
+Download `zentorrent.exe` from [zentorrent.vercel.app](https://zentorrent.vercel.app) or install via PowerShell:
 ```powershell
 irm https://zentorrent.vercel.app/install.ps1 | iex
 ```
 
-### 🐧 Linux
+### Linux
 ```bash
 curl -fsSL https://zentorrent.vercel.app/install.sh | sh
 ```
 
 ---
 
-## ⚡ Streaming Tiers
+## Streaming Tiers
 
-| Tier | Source | Notes |
-|------|--------|-------|
-| 1 · Debrid | Real-Debrid, TorBox | instant cached direct links (set API keys in config) |
-| 2 · P2P | warm anacrolix client | head+tail piece priority, MPV IPC seek-aware scheduler |
-| 3 · HLS | VidSrc / VidLink / AutoEmbed | auto-fallback when seeders < `hls_seed_floor` |
-| 4 · Music | ZenPlayer Audio Engine | YouTube & lossless streaming with real-time DSP |
-
----
-
-## 📁 Repository Layout
-
-```
-cmd/zentorrent/      entrypoint + TUI + lifecycle wiring + zenplayer
-internal/config/     TOML config (debrid keys, ports, providers)
-internal/metadata/   TMDB client, SQLite FTS5 trigram catalog,
-                     phonetic (consonant-skeleton) + Damerau-Levenshtein fuzzy matching
-internal/debrid/     Real-Debrid & TorBox instant-cache resolvers
-internal/extractors/ HLS embed providers keyed by TMDB/IMDb ID
-internal/search/     Torznab client, BEP-51/09 DHT crawler, tier-ranked aggregator
-internal/engine/     shared warm torrent client + VOD seek-window buffer
-internal/streamer/   MPV (IPC socket) / VLC launcher
-internal/web/        embedded dashboard (go:embed) + REST + WebSocket + ZenPlayer
-```
+| Tier | Source | Description |
+|------|--------|-------------|
+| 1 · Debrid | Real-Debrid, TorBox | Instant cached direct links |
+| 2 · P2P | BitTorrent client | Head/tail piece prioritization with MPV seek scheduler |
+| 3 · HLS | VidSrc / VidLink / AutoEmbed | Fallback when seeders < `hls_seed_floor` |
+| 4 · Music | Audio Engine | YouTube and lossless stream resolver with equalizer |
 
 ---
 
-## 🛠️ Quick Start
+## Project Structure
+
+```
+cmd/zentorrent/      CLI entrypoint, TUI, and ZenPlayer launcher
+internal/config/     TOML configuration (debrid keys, ports, providers)
+internal/metadata/   TMDB client, SQLite FTS5 catalog, phonetic/fuzzy search
+internal/debrid/     Real-Debrid and TorBox resolvers
+internal/extractors/ HLS stream providers keyed by TMDB/IMDb ID
+internal/search/     Torznab client, DHT crawler, ranked aggregator
+internal/engine/     Torrent client and VOD buffer scheduler
+internal/streamer/   MPV / VLC player integration
+internal/web/        Embedded web UI and REST/WebSocket API
+```
+
+---
+
+## Quick Start
 
 ```bash
 # Build from source
 go build -o zentorrent ./cmd/zentorrent
 
-# Launch TUI Menu
+# Launch TUI
 ./zentorrent
 
-# Sync TMDB Daily Dump (~1.2M titles)
+# Sync TMDB catalog (~1.2M records)
 ./zentorrent sync
 
-# Start ZenTorrent Studio Web Player & ZenPlayer Music
-./zentorrent serve           # → http://localhost:8888
+# Start web interface on http://localhost:8888
+./zentorrent serve
 
-# Search and stream directly
+# Search and stream
 ./zentorrent search "interstellar"
 ```
 
 ---
 
-## ⚙️ Configuration (`~/.config/zentorrent/config.toml`)
+## Configuration (`~/.config/zentorrent/config.toml`)
 
 ```toml
-tmdb_api_key = "..."            # or TMDB_API_KEY env (dumps work without it)
+tmdb_api_key = "..."            # or set TMDB_API_KEY environment variable
 real_debrid_api_key = "..."
 torbox_api_key = "..."
 
 [[torznab_endpoints]]
-name = "prowlarr"; url = "http://localhost:9696/1"; api_key = "..."
+name = "prowlarr"
+url = "http://localhost:9696/1"
+api_key = "..."
 
-enable_dht_crawler   = true
+enable_dht_crawler = true
 auto_sync_daily_dumps = true
-enable_hls_fallback  = true
-hls_seed_floor       = 20
+enable_hls_fallback = true
+hls_seed_floor = 20
 ```
 
-Search ranking prefers **Debrid cached > seeders > quality > health**; misspellings resolve via trigram + phonetic + fuzzy stages against the local catalog.
+Search ranking prioritizes **Debrid cached > seeders > quality > health**. Queries resolve through trigram, phonetic, and Damerau-Levenshtein fuzzy matching against the local SQLite database.
 
----
-
-🌐 **Website:** [https://zentorrent.vercel.app](https://zentorrent.vercel.app/)
