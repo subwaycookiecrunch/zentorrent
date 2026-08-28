@@ -41,13 +41,10 @@
     overflow-x: hidden;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    selection-background-color: var(--accent);
-    selection-color: #fff;
   }
 
   ::selection { background: rgba(168, 85, 247, 0.35); color: #fff; }
 
-  /* Background Grid & Interactive Spotlight */
   .canvas-layer {
     position: fixed;
     top: 0; left: 0; width: 100vw; height: 100vh;
@@ -73,7 +70,7 @@
     opacity: 0.85;
   }
 
-  /* Header Navigation */
+  /* Header */
   header {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -148,11 +145,10 @@
     font-size: 13px;
     font-weight: 600;
     text-decoration: none;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s ease;
   }
   .btn-star-header:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
   }
   .star-count-badge {
@@ -192,11 +188,6 @@
     background: var(--accent-emerald);
     border-radius: 50%;
     box-shadow: 0 0 8px var(--accent-emerald);
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.4); opacity: 0.6; }
   }
 
   .hero h1 {
@@ -213,20 +204,19 @@
   .hero-tagline {
     font-size: clamp(16px, 2.2vw, 20px);
     color: var(--text-mid);
-    max-width: 660px;
+    max-width: 680px;
     margin: 0 auto 38px;
     font-weight: 400;
     line-height: 1.6;
   }
 
-  /* CTAs */
   .hero-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 14px;
-    margin-bottom: 36px;
+    margin-bottom: 28px;
   }
   .btn-download-main {
     display: inline-flex;
@@ -240,14 +230,12 @@
     font-weight: 700;
     text-decoration: none;
     box-shadow: 0 0 35px rgba(255, 255, 255, 0.25);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s ease;
   }
   .btn-download-main:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 45px rgba(255, 255, 255, 0.45);
     background: #f1f5f9;
   }
-  .btn-download-main svg { fill: currentColor; }
 
   .btn-ghost-gh {
     display: inline-flex;
@@ -266,37 +254,31 @@
   .btn-ghost-gh:hover {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
   }
 
-  /* Terminal Snippet Box */
-  .cli-snippet-wrap {
-    display: inline-flex;
+  /* OS Selector Strip */
+  .platform-quick-strip {
+    display: flex;
     align-items: center;
+    justify-content: center;
     gap: 12px;
-    background: rgba(11, 11, 16, 0.8);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
-    padding: 9px 18px;
-    font-family: var(--font-mono);
+    color: var(--text-low);
     font-size: 13px;
-    color: #e2e8f0;
+    margin-top: 10px;
+  }
+  .platform-quick-link {
+    color: var(--text-mid);
+    text-decoration: underline;
+    text-underline-offset: 3px;
     cursor: pointer;
-    backdrop-filter: blur(12px);
-    transition: all 0.2s ease;
+    transition: color 0.15s ease;
   }
-  .cli-snippet-wrap:hover {
-    border-color: var(--accent-vibrant);
-    background: rgba(18, 18, 26, 0.9);
-  }
-  .cli-prompt { color: var(--text-low); }
-  .cli-text { color: #c084fc; font-weight: 500; }
-  .cli-copy-icon { color: var(--text-mid); font-size: 13px; margin-left: 4px; }
+  .platform-quick-link:hover { color: var(--text-high); }
 
-  /* Interactive Interactive Dual Experience Stage */
+  /* Dual Stage Showcase */
   .stage-section {
     max-width: 1060px;
-    margin: 50px auto 120px;
+    margin: 50px auto 100px;
     padding: 0 24px;
     position: relative;
     z-index: 1;
@@ -304,14 +286,12 @@
   .stage-frame {
     background: var(--surface-card);
     backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: 0 30px 100px rgba(0, 0, 0, 0.9), 0 0 50px rgba(168, 85, 247, 0.05);
   }
 
-  /* Stage Tab Switcher */
   .stage-nav {
     display: flex;
     align-items: center;
@@ -320,10 +300,7 @@
     background: rgba(255, 255, 255, 0.02);
     border-bottom: 1px solid var(--border-subtle);
   }
-  .stage-window-controls {
-    display: flex;
-    gap: 7px;
-  }
+  .stage-window-controls { display: flex; gap: 7px; }
   .stage-window-dot {
     width: 11px; height: 11px;
     border-radius: 50%;
@@ -352,14 +329,10 @@
     color: var(--text-high);
   }
 
-  /* View 1: Cinema Studio Viewport */
-  .view-cinema {
-    display: block;
-    padding: 32px;
-  }
+  .view-cinema { display: block; padding: 32px; }
   .cinema-mock-player {
     aspect-ratio: 16/9;
-    max-height: 480px;
+    max-height: 440px;
     width: 100%;
     background: radial-gradient(circle at 50% 50%, #151522 0%, #08080c 100%);
     border: 1px solid var(--border-subtle);
@@ -371,51 +344,16 @@
     justify-content: space-between;
     padding: 24px;
   }
-  .cinema-player-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    z-index: 2;
-  }
-  .movie-title-badge {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+  .cinema-player-top { display: flex; align-items: center; justify-content: space-between; z-index: 2; }
+  .movie-title-badge { display: flex; align-items: center; gap: 10px; }
   .movie-title-main { font-weight: 800; font-size: 16px; color: #fff; }
   .movie-tag-4k {
-    font-size: 10.5px;
-    font-weight: 800;
-    padding: 2px 6px;
+    font-size: 10.5px; font-weight: 800; padding: 2px 6px;
     background: linear-gradient(135deg, #a855f7, #06b6d4);
-    border-radius: 4px;
-    color: #fff;
+    border-radius: 4px; color: #fff;
   }
 
-  .cinema-center-artwork {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-  .artwork-gradient-glow {
-    position: absolute;
-    width: 320px; height: 180px;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.25), transparent 70%);
-    filter: blur(40px);
-  }
-
-  /* Equalizer Animation Bars */
-  .eq-visualizer-strip {
-    display: flex;
-    align-items: flex-end;
-    gap: 4px;
-    height: 36px;
-    z-index: 2;
-  }
+  .eq-visualizer-strip { display: flex; align-items: flex-end; gap: 4px; height: 32px; }
   .eq-bar {
     width: 4px;
     background: linear-gradient(to top, var(--accent-vibrant), var(--accent-cyan));
@@ -425,59 +363,36 @@
   .eq-bar:nth-child(1) { height: 12px; animation-delay: 0.1s; }
   .eq-bar:nth-child(2) { height: 26px; animation-delay: 0.3s; }
   .eq-bar:nth-child(3) { height: 18px; animation-delay: 0.05s; }
-  .eq-bar:nth-child(4) { height: 34px; animation-delay: 0.4s; }
+  .eq-bar:nth-child(4) { height: 30px; animation-delay: 0.4s; }
   .eq-bar:nth-child(5) { height: 22px; animation-delay: 0.2s; }
   .eq-bar:nth-child(6) { height: 28px; animation-delay: 0.5s; }
-  .eq-bar:nth-child(7) { height: 16px; animation-delay: 0.15s; }
-  .eq-bar:nth-child(8) { height: 32px; animation-delay: 0.35s; }
 
-  @keyframes bounceEQ {
-    0% { transform: scaleY(0.3); }
-    100% { transform: scaleY(1); }
+  @keyframes bounceEQ { 0% { transform: scaleY(0.3); } 100% { transform: scaleY(1); } }
+
+  .cinema-center-artwork {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none;
   }
 
   .cinema-player-bottom {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
-    padding: 10px 16px;
-    z-index: 2;
-  }
-  .cinema-controls-left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle); border-radius: 10px;
+    padding: 10px 16px; z-index: 2;
   }
   .cinema-btn-pill {
-    font-size: 12px;
-    font-weight: 700;
-    padding: 4px 10px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    color: #e2e8f0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
+    font-size: 12px; font-weight: 700; padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-subtle);
+    border-radius: 6px; color: #e2e8f0; display: flex; align-items: center; gap: 6px; cursor: pointer;
   }
   .cinema-btn-pill.active {
-    background: rgba(168, 85, 247, 0.2);
-    border-color: var(--accent-vibrant);
-    color: #c084fc;
+    background: rgba(168, 85, 247, 0.2); border-color: var(--accent-vibrant); color: #c084fc;
   }
 
-  /* View 2: Terminal TUI Viewport */
   .view-terminal {
-    display: none;
-    padding: 32px;
-    font-family: var(--font-mono);
-    font-size: 13.5px;
-    line-height: 1.8;
+    display: none; padding: 32px;
+    font-family: var(--font-mono); font-size: 13.5px; line-height: 1.8;
   }
   .t-cyan { color: #38bdf8; font-weight: 600; }
   .t-purple { color: #c084fc; font-weight: 600; }
@@ -486,7 +401,152 @@
   .t-dim { color: #64748b; }
   .t-white { color: #f8fafc; }
 
-  /* Bento Grid Features Section */
+  /* Choose Your Platform Section */
+  .platform-section {
+    max-width: 1060px;
+    margin: 0 auto 130px;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+  .platform-card-wrap {
+    background: var(--surface-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 44px;
+    backdrop-filter: blur(20px);
+  }
+  .platform-header-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 36px;
+  }
+  .platform-heading h2 {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 900;
+    letter-spacing: -1.2px;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .platform-heading p {
+    color: var(--text-mid);
+    font-size: 15px;
+  }
+
+  .os-pill-tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-subtle);
+    padding: 4px;
+    border-radius: 10px;
+    gap: 4px;
+  }
+  .os-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    color: var(--text-mid);
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .os-tab-btn.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  /* Platform Content Panels */
+  .os-panel { display: none; }
+  .os-panel.active { display: block; }
+
+  .os-install-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .install-method-box {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .install-method-box:hover {
+    border-color: rgba(168, 85, 247, 0.3);
+  }
+  .method-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .method-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    background: rgba(168, 85, 247, 0.15);
+    color: var(--accent-vibrant);
+    border-radius: 4px;
+  }
+  .method-desc {
+    font-size: 13px;
+    color: var(--text-mid);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .code-snippet-card {
+    background: #06060a;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #c084fc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .code-snippet-card:hover {
+    border-color: var(--accent-vibrant);
+    background: #090910;
+  }
+
+  .btn-os-download-direct {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .btn-os-download-direct:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+  }
+
+  /* Bento Grid */
   .bento-section {
     max-width: 1060px;
     margin: 0 auto 130px;
@@ -494,10 +554,7 @@
     position: relative;
     z-index: 1;
   }
-  .bento-header {
-    text-align: center;
-    margin-bottom: 54px;
-  }
+  .bento-header { text-align: center; margin-bottom: 54px; }
   .bento-header h2 {
     font-size: clamp(30px, 4.5vw, 44px);
     font-weight: 800;
@@ -505,135 +562,64 @@
     margin-bottom: 14px;
   }
   .bento-header p {
-    color: var(--text-mid);
-    font-size: 16px;
-    max-width: 580px;
-    margin: 0 auto;
+    color: var(--text-mid); font-size: 16px; max-width: 580px; margin: 0 auto;
   }
 
   .bento-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 20px;
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px;
   }
-
   .bento-card {
-    background: var(--surface-card);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    padding: 32px;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    background: var(--surface-card); backdrop-filter: blur(20px);
+    border: 1px solid var(--border-subtle); border-radius: var(--radius-lg);
+    padding: 32px; transition: all 0.25s ease;
   }
   .bento-card:hover {
-    border-color: rgba(168, 85, 247, 0.35);
-    background: rgba(24, 24, 34, 0.75);
-    transform: translateY(-3px);
+    border-color: rgba(168, 85, 247, 0.35); transform: translateY(-3px);
   }
-
   .col-8 { grid-column: span 8; }
   .col-4 { grid-column: span 4; }
-  .col-6 { grid-column: span 6; }
-  .col-12 { grid-column: span 12; }
 
   @media (max-width: 860px) {
-    .col-8, .col-4, .col-6 { grid-column: span 12; }
-    .nav-links { display: none; }
+    .col-8, .col-4 { grid-column: span 12; }
+    .nav-actions { display: none; }
+    .platform-header-row { flex-direction: column; align-items: flex-start; }
   }
 
   .card-icon-bubble {
-    width: 44px; height: 44px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-subtle);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    margin-bottom: 20px;
+    width: 44px; height: 44px; background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; margin-bottom: 20px;
   }
   .bento-card h3 {
-    font-size: 19px;
-    font-weight: 800;
-    letter-spacing: -0.4px;
-    color: #fff;
-    margin-bottom: 10px;
+    font-size: 19px; font-weight: 800; letter-spacing: -0.4px; color: #fff; margin-bottom: 10px;
   }
-  .bento-card p {
-    font-size: 14px;
-    color: var(--text-mid);
-    line-height: 1.65;
-  }
-
-  /* Interactive Reaction Particles in Card */
-  .reaction-bar {
-    display: flex;
-    gap: 8px;
-    margin-top: 20px;
-  }
-  .reaction-emoji-btn {
-    padding: 6px 12px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border-subtle);
-    border-radius: 8px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: transform 0.15s ease, background 0.15s ease;
-  }
-  .reaction-emoji-btn:hover {
-    transform: scale(1.2);
-    background: rgba(168, 85, 247, 0.2);
-  }
+  .bento-card p { font-size: 14px; color: var(--text-mid); line-height: 1.65; }
 
   /* Footer */
   footer {
     border-top: 1px solid var(--border-subtle);
-    padding: 50px 32px;
-    text-align: center;
-    background: rgba(5, 5, 8, 0.85);
-    position: relative;
-    z-index: 1;
+    padding: 50px 32px; text-align: center;
+    background: rgba(5, 5, 8, 0.85); position: relative; z-index: 1;
   }
   .footer-links {
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    margin-bottom: 18px;
+    display: flex; justify-content: center; gap: 24px; margin-bottom: 18px;
   }
   .footer-links a {
-    color: var(--text-mid);
-    text-decoration: none;
-    font-size: 13.5px;
-    font-weight: 500;
-    transition: color 0.15s ease;
+    color: var(--text-mid); text-decoration: none; font-size: 13.5px; font-weight: 500;
   }
   .footer-links a:hover { color: #fff; }
-  .footer-copy {
-    color: var(--text-low);
-    font-size: 12.5px;
-  }
+  .footer-copy { color: var(--text-low); font-size: 12.5px; }
 
-  /* Toast Notification */
+  /* Toast */
   .toast-popup {
-    position: fixed;
-    bottom: 28px;
-    left: 50%;
+    position: fixed; bottom: 28px; left: 50%;
     transform: translateX(-50%) translateY(120px);
-    background: #181824;
-    border: 1px solid var(--border-highlight);
-    color: #fff;
-    padding: 10px 22px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-    box-shadow: 0 16px 40px rgba(0,0,0,0.85);
+    background: #181824; border: 1px solid var(--border-highlight);
+    color: #fff; padding: 10px 22px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; box-shadow: 0 16px 40px rgba(0,0,0,0.85);
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    z-index: 200; display: flex; align-items: center; gap: 8px;
   }
   .toast-popup.visible { transform: translateX(-50%) translateY(0); }
 </style>
@@ -654,6 +640,7 @@
   </a>
 
   <div class="nav-actions">
+    <a href="#platforms" class="nav-item">Install Platforms</a>
     <a href="#features" class="nav-item">Features</a>
     <a href="https://github.com/subwaycookiecrunch/zentorrent/releases" class="nav-item" target="_blank">Releases</a>
     <a href="https://github.com/subwaycookiecrunch/zentorrent" class="btn-star-header" target="_blank">
@@ -668,37 +655,36 @@
 <section class="hero">
   <div class="status-badge">
     <span class="pulse-dot"></span>
-    <span>v4.0.0 Architecture • Zero Buffering</span>
+    <span>v4.0.0 Architecture • Windows • Linux • macOS</span>
   </div>
 
   <h1>Stream any torrent instantly.<br>In terminal or browser.</h1>
 
   <p class="hero-tagline">
-    A single static Go binary. Real-time dialogue clarity audio DSP, synchronized watch parties, and floating mini-player.
+    A single static Go binary with zero external dependencies. Native support for Windows PowerShell, Linux daemons, and macOS.
   </p>
 
   <div class="hero-actions">
     <a id="btn-hero-download" href="https://github.com/subwaycookiecrunch/zentorrent/releases/tag/v4.0.0" class="btn-download-main" target="_blank">
       <svg width="17" height="17" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-      <span id="label-os-download">Download for macOS</span>
+      <span id="label-os-download">Download for your OS</span>
     </a>
 
     <a href="https://github.com/subwaycookiecrunch/zentorrent" class="btn-ghost-gh" target="_blank">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-      <span>GitHub Repo</span>
+      <span>View on GitHub</span>
     </a>
   </div>
 
-  <div>
-    <div class="cli-snippet-wrap" onclick="copyInstallCmd()">
-      <span class="cli-prompt">$</span>
-      <span class="cli-text" id="install-snippet">curl -sSL https://raw.githubusercontent.com/subwaycookiecrunch/zentorrent/main/install.sh | bash</span>
-      <span class="cli-copy-icon">📋</span>
-    </div>
+  <div class="platform-quick-strip">
+    <span>Available on:</span>
+    <span class="platform-quick-link" onclick="selectPlatformTab('windows')">🪟 Windows</span> • 
+    <span class="platform-quick-link" onclick="selectPlatformTab('linux')">🐧 Linux</span> • 
+    <span class="platform-quick-link" onclick="selectPlatformTab('macos')">🍎 macOS</span>
   </div>
 </section>
 
-<!-- Dual Stage Interactive Showcase -->
+<!-- Dual Stage Showcase -->
 <section class="stage-section">
   <div class="stage-frame">
     <div class="stage-nav">
@@ -726,10 +712,7 @@
             <span style="font-size: 12px; color: var(--text-mid);">• 1,188 Peers</span>
           </div>
 
-          <!-- Real-Time Equalizer Waves -->
           <div class="eq-visualizer-strip" title="Audio EQ Dialogue Lift Active">
-            <div class="eq-bar"></div>
-            <div class="eq-bar"></div>
             <div class="eq-bar"></div>
             <div class="eq-bar"></div>
             <div class="eq-bar"></div>
@@ -740,9 +723,8 @@
         </div>
 
         <div class="cinema-center-artwork">
-          <div class="artwork-gradient-glow"></div>
           <div style="font-size: 40px; margin-bottom: 8px;">🌌</div>
-          <div style="font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">STREAMING INSTANTLY (0s BUFFER)</div>
+          <div style="font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.5px;">STREAMING DIRECT TO BROWSER / VLC</div>
         </div>
 
         <div class="cinema-player-bottom">
@@ -751,14 +733,14 @@
               <span>🎧</span>
               <span id="audio-demo-txt">Dialogue Lift: ON</span>
             </div>
-            <div class="cinema-btn-pill" onclick="triggerPartyDemo()">
+            <div class="cinema-btn-pill" onclick="showToastMsg('🍿 Watch Party Synced (0ms offset)')">
               <span>🍿</span>
-              <span>Watch Party (PIN: 8888)</span>
+              <span>Watch Party</span>
             </div>
           </div>
 
           <div style="font-size: 12px; font-family: var(--font-mono); color: var(--accent-emerald);">
-            ● 24.5 MB/s • 54 Trackers Injected
+            ● 24.5 MB/s • 54 Trackers Active
           </div>
         </div>
       </div>
@@ -766,13 +748,168 @@
 
     <!-- View 2: Terminal TUI -->
     <div class="view-terminal" id="stage-terminal">
-      <div><span class="t-dim">$</span> <span class="t-cyan">zentorrent search</span> <span class="t-amber">"Dune Part Two 2160p"</span></div>
+      <div><span class="t-dim">></span> <span class="t-cyan">zentorrent search</span> <span class="t-amber">"Dune Part Two 2160p"</span></div>
       <div class="t-dim">> Discovering swarms across 1337x, YTS, Nyaa & BEP-51 DHT crawler...</div>
       <div class="t-emerald">✔ Matched: Dune.Part.Two.2024.2160p.UHD.HDR.Atmos (2,410 Seeders • 28.2 GB)</div>
       <div class="t-purple">> VOD Piece Scheduler: buffering [0..4] and [982..986] pieces...</div>
       <div class="t-white">> [████████████████████████████████] 100% Ready (14ms latency)</div>
       <div><span class="t-dim">> Launched local streaming server:</span> <span class="t-cyan">http://localhost:8888</span></div>
-      <div><span class="t-dim">> Press</span> <span class="t-amber">[Space]</span> <span class="t-dim">Pause/Play •</span> <span class="t-amber">[E]</span> <span class="t-dim">Audio EQ •</span> <span class="t-amber">[I]</span> <span class="t-dim">PiP Mini •</span> <span class="t-amber">[Q]</span> <span class="t-dim">Quit</span></div>
+      <div><span class="t-dim">> Hotkeys:</span> <span class="t-amber">[Space]</span> <span class="t-dim">Pause •</span> <span class="t-amber">[E]</span> <span class="t-dim">Audio EQ •</span> <span class="t-amber">[I]</span> <span class="t-dim">Mini Player •</span> <span class="t-amber">[Q]</span> <span class="t-dim">Quit</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- Choose Your Platform Section -->
+<section class="platform-section" id="platforms">
+  <div class="platform-card-wrap">
+    <div class="platform-header-row">
+      <div class="platform-heading">
+        <h2>Choose your platform.</h2>
+        <p>ZenTorrent runs locally on Windows, Linux, and macOS as a standalone native binary.</p>
+      </div>
+
+      <div class="os-pill-tabs">
+        <button class="os-tab-btn" id="tab-os-windows" onclick="selectPlatformTab('windows')">🪟 Windows</button>
+        <button class="os-tab-btn" id="tab-os-linux" onclick="selectPlatformTab('linux')">🐧 Linux</button>
+        <button class="os-tab-btn active" id="tab-os-macos" onclick="selectPlatformTab('macos')">🍎 macOS</button>
+      </div>
+    </div>
+
+    <!-- Windows Panel -->
+    <div class="os-panel" id="panel-windows">
+      <div class="os-install-grid">
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>Standalone Executable</span>
+              <span class="method-badge">Direct .exe</span>
+            </div>
+            <div class="method-desc">Download and double-click or run from PowerShell/CMD. Zero install required.</div>
+          </div>
+          <a href="https://github.com/subwaycookiecrunch/zentorrent/releases/download/v4.0.0/zentorrent-windows-amd64.exe" class="btn-os-download-direct">
+            <span>Download zentorrent-windows-amd64.exe (64-bit)</span>
+          </a>
+        </div>
+
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>PowerShell Quick Run</span>
+              <span class="method-badge">1-Liner</span>
+            </div>
+            <div class="method-desc">Download and launch directly in your terminal via PowerShell:</div>
+          </div>
+          <div class="code-snippet-card" onclick="copySnippet('iwr -useb https://github.com/subwaycookiecrunch/zentorrent/releases/download/v4.0.0/zentorrent-windows-amd64.exe -OutFile zentorrent.exe; .\\zentorrent.exe')">
+            <span>iwr -useb ... -OutFile zentorrent.exe; .\zentorrent.exe</span>
+            <span>📋</span>
+          </div>
+        </div>
+
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>WinGet Package Manager</span>
+              <span class="method-badge">Native Windows</span>
+            </div>
+            <div class="method-desc">Install and keep updated using Windows Package Manager:</div>
+          </div>
+          <div class="code-snippet-card" onclick="copySnippet('winget install subwaycookiecrunch.zentorrent')">
+            <span>winget install subwaycookiecrunch.zentorrent</span>
+            <span>📋</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Linux Panel -->
+    <div class="os-panel" id="panel-linux">
+      <div class="os-install-grid">
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>One-Line Terminal Install</span>
+              <span class="method-badge">Auto Install</span>
+            </div>
+            <div class="method-desc">Downloads binary, sets executable permissions, and links to /usr/local/bin:</div>
+          </div>
+          <div class="code-snippet-card" onclick="copySnippet('curl -sSL https://raw.githubusercontent.com/subwaycookiecrunch/zentorrent/main/install.sh | bash')">
+            <span>curl -sSL .../install.sh | bash</span>
+            <span>📋</span>
+          </div>
+        </div>
+
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>Standalone Linux Binary</span>
+              <span class="method-badge">x86_64</span>
+            </div>
+            <div class="method-desc">Raw 64-bit ELF binary for Ubuntu, Debian, Arch, Fedora, Alpine, or NAS.</div>
+          </div>
+          <a href="https://github.com/subwaycookiecrunch/zentorrent/releases/download/v4.0.0/zentorrent-linux-amd64" class="btn-os-download-direct">
+            <span>Download zentorrent-linux-amd64</span>
+          </a>
+        </div>
+
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>HomeLab / Server Daemon</span>
+              <span class="method-badge">Headless</span>
+            </div>
+            <div class="method-desc">Run in background as a web cinema server on your VPS, Raspberry Pi, or NAS:</div>
+          </div>
+          <div class="code-snippet-card" onclick="copySnippet('zentorrent serve --port 8888')">
+            <span>zentorrent serve --port 8888</span>
+            <span>📋</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- macOS Panel -->
+    <div class="os-panel active" id="panel-macos">
+      <div class="os-install-grid">
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>Apple Silicon (M1/M2/M3/M4)</span>
+              <span class="method-badge">ARM64</span>
+            </div>
+            <div class="method-desc">Optimized native binary for modern Apple Silicon Macs.</div>
+          </div>
+          <a href="https://github.com/subwaycookiecrunch/zentorrent/releases/download/v4.0.0/zentorrent-darwin-arm64" class="btn-os-download-direct">
+            <span>Download for Apple Silicon (arm64)</span>
+          </a>
+        </div>
+
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>Intel Macs (x86_64)</span>
+              <span class="method-badge">AMD64</span>
+            </div>
+            <div class="method-desc">Native binary for Intel-based MacBooks and iMacs.</div>
+          </div>
+          <a href="https://github.com/subwaycookiecrunch/zentorrent/releases/download/v4.0.0/zentorrent-darwin-amd64" class="btn-os-download-direct">
+            <span>Download for Intel macOS (amd64)</span>
+          </a>
+        </div>
+
+        <div class="install-method-box">
+          <div>
+            <div class="method-title">
+              <span>Quick Terminal Install</span>
+              <span class="method-badge">1-Liner</span>
+            </div>
+            <div class="method-desc">Automatic architecture detection and installer script:</div>
+          </div>
+          <div class="code-snippet-card" onclick="copySnippet('curl -sSL https://raw.githubusercontent.com/subwaycookiecrunch/zentorrent/main/install.sh | bash')">
+            <span>curl -sSL .../install.sh | bash</span>
+            <span>📋</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -781,11 +918,10 @@
 <section class="bento-section" id="features">
   <div class="bento-header">
     <h2>Built without compromises.</h2>
-    <p>Modern streaming engineering packed into a lightweight, standalone Go binary.</p>
+    <p>Everything you need for seamless streaming packed into a single Go binary.</p>
   </div>
 
   <div class="bento-grid">
-    <!-- Feature 1: Audio EQ -->
     <div class="bento-card col-8">
       <div class="card-icon-bubble">🎧</div>
       <h3>Real-Time Dialogue Booster & Spatial EQ</h3>
@@ -794,7 +930,6 @@
       </p>
     </div>
 
-    <!-- Feature 2: Swarm Turbo -->
     <div class="bento-card col-4">
       <div class="card-icon-bubble">⚡</div>
       <h3>54 Tier-1 DHT Trackers</h3>
@@ -803,31 +938,22 @@
       </p>
     </div>
 
-    <!-- Feature 3: Watch Party -->
     <div class="bento-card col-4">
       <div class="card-icon-bubble">🍿</div>
       <h3>Watch Party Synchronization</h3>
       <p>
         Watch movies together with synchronized playback, private room PINs, live chat, and floating reaction emojis.
       </p>
-      <div class="reaction-bar">
-        <button class="reaction-emoji-btn" onclick="fireReaction('🔥')">🔥</button>
-        <button class="reaction-emoji-btn" onclick="fireReaction('🍿')">🍿</button>
-        <button class="reaction-emoji-btn" onclick="fireReaction('🚀')">🚀</button>
-        <button class="reaction-emoji-btn" onclick="fireReaction('❤️')">❤️</button>
-      </div>
     </div>
 
-    <!-- Feature 4: PiP Mini Player -->
     <div class="bento-card col-4">
       <div class="card-icon-bubble">🖼️</div>
       <h3>Floating Mini-Player (PiP)</h3>
       <p>
-        Press <code>I</code> to detach the stream into a floating corner mini-player so you can multitask or browse other movies without interrupting playback.
+        Press <code>I</code> to detach the stream into a floating corner mini-player so you can multitask or browse without interrupting playback.
       </p>
     </div>
 
-    <!-- Feature 5: Zero Cost Private Tunnel -->
     <div class="bento-card col-4">
       <div class="card-icon-bubble">🔒</div>
       <h3>Zero-Cost Private Tunnel</h3>
@@ -845,7 +971,7 @@
     <a href="https://github.com/subwaycookiecrunch/zentorrent/releases" target="_blank">Releases</a>
     <a href="https://github.com/subwaycookiecrunch/zentorrent/blob/main/LICENSE" target="_blank">MIT License</a>
   </div>
-  <div class="footer-copy">ZenTorrent v4.0.0 • Open source & built with Go</div>
+  <div class="footer-copy">ZenTorrent v4.0.0 • Open source & built with Go for Windows, Linux & macOS</div>
 </footer>
 
 <div class="toast-popup" id="toast-pop">
@@ -861,15 +987,18 @@
     const label = document.getElementById('label-os-download');
     const base = 'https://github.com/subwaycookiecrunch/zentorrent/releases/download/v4.0.0/';
 
-    if (ua.includes('mac')) {
-      btn.href = base + 'zentorrent-darwin-arm64';
-      label.innerText = 'Download for macOS';
-    } else if (ua.includes('win')) {
+    if (ua.includes('win')) {
       btn.href = base + 'zentorrent-windows-amd64.exe';
-      label.innerText = 'Download for Windows';
+      label.innerText = 'Download for Windows (64-bit)';
+      selectPlatformTab('windows');
     } else if (ua.includes('linux')) {
       btn.href = base + 'zentorrent-linux-amd64';
-      label.innerText = 'Download for Linux';
+      label.innerText = 'Download for Linux (64-bit)';
+      selectPlatformTab('linux');
+    } else if (ua.includes('mac')) {
+      btn.href = base + 'zentorrent-darwin-arm64';
+      label.innerText = 'Download for macOS';
+      selectPlatformTab('macos');
     } else {
       btn.href = 'https://github.com/subwaycookiecrunch/zentorrent/releases/tag/v4.0.0';
       label.innerText = 'Download ZenTorrent v4';
@@ -884,6 +1013,24 @@
         document.getElementById('star-count').innerText = d.stargazers_count;
       }
     }).catch(() => {});
+
+  // Platform Tab Switcher
+  function selectPlatformTab(os) {
+    const tabs = ['windows', 'linux', 'macos'];
+    tabs.forEach(t => {
+      const btn = document.getElementById('tab-os-' + t);
+      const panel = document.getElementById('panel-' + t);
+      if (btn && panel) {
+        if (t === os) {
+          btn.classList.add('active');
+          panel.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+          panel.classList.remove('active');
+        }
+      }
+    });
+  }
 
   // Interactive Stage Switcher
   function switchStage(type) {
@@ -916,20 +1063,11 @@
     }
   }
 
-  function triggerPartyDemo() {
-    showToastMsg('🍿 Watch Party Synced (0ms offset)');
-  }
-
-  function fireReaction(emoji) {
-    showToastMsg(`${emoji} Reaction broadcasted to room!`);
-  }
-
-  function copyInstallCmd() {
-    const text = document.getElementById('install-snippet').innerText;
+  function copySnippet(text) {
     navigator.clipboard.writeText(text).then(() => {
-      showToastMsg('📋 Install snippet copied to clipboard!');
+      showToastMsg('📋 Copied to clipboard!');
     }).catch(() => {
-      showToastMsg('Command selected');
+      showToastMsg('Snippet selected');
     });
   }
 
