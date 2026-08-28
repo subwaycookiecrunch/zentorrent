@@ -2,41 +2,52 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>ZenTorrent Studio — Distributed BitTorrent & Multi-Cloud Cinema</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ZenTorrent">
+<meta name="theme-color" content="#060608">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/app-icon.svg">
+<link rel="icon" type="image/svg+xml" href="/app-icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
   :root {
-    --bg-base: #060608;
-    --bg-surface: #0e0e13;
-    --bg-card: #14141c;
-    --bg-card-hover: #1c1c28;
-    --accent: #8b5cf6;
-    --accent-glow: rgba(139, 92, 246, 0.45);
-    --accent-hover: #7c3aed;
-    --text-main: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-medium: rgba(255, 255, 255, 0.16);
-    --star-gold: #fbbf24;
+    --bg-base: #111210;
+    --bg-surface: #181916;
+    --bg-card: #181916;
+    --bg-card-hover: #22231e;
+    --stage-bg: #20221d;
+    --accent: #d5a85b;
+    --accent-glow: rgba(213, 168, 91, 0.25);
+    --accent-hover: #e0b468;
+    --accent-transparent: rgba(213, 168, 91, 0.10);
+    --text-main: #f1f0eb;
+    --text-secondary: #9b9b92;
+    --text-muted: #70716b;
+    --border-subtle: #30312d;
+    --border-medium: #3d3e38;
+    --border-hover: #68675e;
+    --star-gold: #d5a85b;
     --emerald-green: #10b981;
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 16px;
+    --radius-sm: 5px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background-color: var(--bg-base);
     color: var(--text-main);
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
   }
 
   /* Custom Scrollbar */
@@ -73,18 +84,17 @@
     cursor: pointer;
   }
   .brand-emblem {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #8b5cf6 0%, #4c1d95 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    font-weight: 900;
-    font-size: 19px;
-    box-shadow: 0 0 20px var(--accent-glow);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: #f1f0eb;
+    color: #111210;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 15px;
+    border: 1px solid #68675e;
+    box-shadow: 0 0 14px rgba(213, 168, 91, 0.15);
   }
   .brand-title-wrap {
     display: flex;
@@ -92,20 +102,19 @@
     gap: 8px;
   }
   .brand-name {
-    font-size: 20px;
-    font-weight: 900;
-    letter-spacing: -0.5px;
-    background: linear-gradient(to right, #ffffff 40%, #a1a1aa 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 16px;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    color: var(--text-main);
   }
   .brand-studio-badge {
-    background: rgba(139, 92, 246, 0.15);
-    color: #a78bfa;
-    border: 1px solid rgba(139, 92, 246, 0.4);
-    font-size: 9.5px;
-    font-weight: 800;
-    letter-spacing: 1px;
+    background: var(--accent-transparent);
+    color: var(--accent);
+    border: 1px solid var(--border-subtle);
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     padding: 2px 7px;
     border-radius: 4px;
     text-transform: uppercase;
@@ -120,15 +129,15 @@
   .nav-item-link {
     color: var(--text-secondary);
     text-decoration: none;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: 13.5px;
+    font-weight: 500;
+    transition: all 0.2s ease;
     cursor: pointer;
     position: relative;
     padding: 6px 0;
   }
   .nav-item-link:hover, .nav-item-link.active {
-    color: #ffffff;
+    color: var(--text-main);
   }
   .nav-item-link.active::after {
     content: '';
@@ -136,7 +145,7 @@
     bottom: 0; left: 0; right: 0;
     height: 2px;
     background: var(--accent);
-    box-shadow: 0 0 10px var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
     border-radius: 2px;
   }
 
@@ -149,53 +158,52 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
-    padding: 7px 14px;
-    border-radius: 8px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
     color: var(--text-muted);
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s ease;
   }
   .search-action-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: var(--border-medium);
+    border-color: var(--border-hover);
     color: var(--text-secondary);
   }
   .key-shortcut-tag {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--border-subtle);
     padding: 1px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    color: #a1a1aa;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    color: var(--text-muted);
   }
   .nav-icon-button {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: grid;
+    place-items: center;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
   }
   .nav-icon-button:hover {
-    background: rgba(255, 255, 255, 0.09);
-    border-color: var(--border-medium);
-    color: #ffffff;
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    color: var(--text-main);
+    transform: translateY(-1px);
   }
   .badge-counter-pill {
     position: absolute;
     top: -4px; right: -4px;
     background: var(--accent);
-    color: #ffffff;
+    color: #171712;
     font-size: 9px;
     font-weight: 800;
     padding: 1px 5px;
@@ -207,12 +215,12 @@
   .hero-wrapper {
     position: relative;
     width: 100%;
-    min-height: 80vh;
+    min-height: 75vh;
     display: flex;
     align-items: flex-end;
     padding: 100px 56px 64px;
     overflow: hidden;
-    background: #060608;
+    background: var(--bg-base);
   }
   .hero-canvas-art {
     position: absolute;
@@ -225,19 +233,19 @@
   .hero-vignette-radial {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: radial-gradient(circle at 75% 35%, transparent 20%, rgba(6, 6, 8, 0.6) 65%, #060608 98%);
+    background: radial-gradient(circle at 75% 35%, transparent 20%, rgba(17, 18, 16, 0.6) 65%, #111210 98%);
     z-index: 2;
   }
   .hero-vignette-bottom {
     position: absolute;
     bottom: 0; left: 0; width: 100%; height: 65%;
-    background: linear-gradient(to top, #060608 0%, rgba(6, 6, 8, 0.8) 40%, transparent 100%);
+    background: linear-gradient(to top, #111210 0%, rgba(17, 18, 16, 0.8) 40%, transparent 100%);
     z-index: 2;
   }
   .hero-vignette-left {
     position: absolute;
     top: 0; left: 0; width: 60%; height: 100%;
-    background: linear-gradient(to right, #060608 0%, rgba(6, 6, 8, 0.9) 35%, transparent 100%);
+    background: linear-gradient(to right, #111210 0%, rgba(17, 18, 16, 0.9) 35%, transparent 100%);
     z-index: 2;
   }
 
@@ -250,32 +258,32 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--accent-transparent);
     border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
+    color: var(--accent);
     padding: 4px 12px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 700;
+    border-radius: var(--radius-sm);
+    font-size: 10.5px;
+    font-weight: 600;
+    font-family: 'Geist Mono', monospace;
+    letter-spacing: 0.12em;
     margin-bottom: 16px;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    backdrop-filter: blur(12px);
   }
   .hero-title-text {
     font-size: clamp(2.4rem, 5vw, 3.8rem);
-    font-weight: 900;
-    line-height: 1.06;
+    font-weight: 700;
+    line-height: 1.02;
     margin-bottom: 16px;
-    letter-spacing: -1.2px;
-    text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    letter-spacing: -0.06em;
+    color: var(--text-main);
   }
   .hero-metadata-line {
     display: flex;
     align-items: center;
     gap: 12px;
     font-size: 13.5px;
-    font-weight: 600;
+    font-weight: 500;
     margin-bottom: 16px;
     color: var(--text-secondary);
     flex-wrap: wrap;
@@ -285,20 +293,21 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-weight: 700;
+    font-weight: 600;
   }
   .tech-pill {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border-subtle);
     padding: 2px 7px;
     border-radius: 4px;
     font-size: 10.5px;
-    font-weight: 700;
-    color: #e4e4e7;
+    font-family: 'Geist Mono', monospace;
+    font-weight: 500;
+    color: var(--text-secondary);
   }
   .hero-synopsis-text {
     font-size: 14.5px;
-    line-height: 1.6;
+    line-height: 1.65;
     color: var(--text-secondary);
     margin-bottom: 28px;
     display: -webkit-box;
@@ -314,42 +323,42 @@
   }
 
   .btn-solid-primary {
-    background: #ffffff;
-    color: #09090b;
+    background: var(--accent);
+    color: #171712;
     border: none;
-    padding: 12px 28px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    font-weight: 650;
     display: flex;
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s ease;
   }
   .btn-solid-primary:hover {
-    background: #e4e4e7;
+    background: var(--accent-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 20px var(--accent-glow);
   }
   .btn-glass-secondary {
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(16px);
-    color: #ffffff;
+    background: transparent;
+    color: var(--text-secondary);
     border: 1px solid var(--border-subtle);
-    padding: 12px 22px;
-    border-radius: 8px;
-    font-size: 14px;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
     font-weight: 600;
     display: flex;
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s ease;
   }
   .btn-glass-secondary:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: var(--border-medium);
+    background: var(--bg-surface);
+    border-color: var(--border-hover);
+    color: var(--text-main);
     transform: translateY(-2px);
   }
 
@@ -422,9 +431,10 @@
   }
   .genre-chip.active {
     background: var(--accent);
-    color: #ffffff;
+    color: #171712;
     border-color: var(--accent);
-    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+    font-weight: 700;
+    box-shadow: 0 2px 10px var(--accent-glow);
   }
   .filter-dropdowns-group {
     display: flex;
@@ -889,8 +899,9 @@
   .server-tab-btn:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; }
   .server-tab-btn.active {
     background: var(--accent);
-    color: #ffffff;
+    color: #171712;
     border-color: var(--accent);
+    font-weight: 700;
     box-shadow: 0 0 12px var(--accent-glow);
   }
   .status-led-dot {
@@ -1539,14 +1550,945 @@
   @media (max-width: 1024px) {
     .hero-slider-strip { display: none; }
   }
+
+  /* Full Mobile Responsiveness */
   @media (max-width: 768px) {
-    header { padding: 0 20px; }
+    header {
+      padding: 0 16px;
+      height: 58px;
+    }
+    .nav-brand-group { gap: 10px; }
+    .brand-emblem { width: 26px; height: 26px; font-size: 13px; border-radius: 5px; }
+    .brand-name { font-size: 15px; }
+    .brand-studio-badge { display: none; }
     .nav-menu-list { display: none; }
-    .hero-wrapper { padding: 80px 20px 48px; min-height: 65vh; }
-    main { padding: 24px 20px 60px; }
-    .cinema-card { flex: 0 0 140px; }
-    .details-body-layout { flex-direction: column; align-items: center; text-align: center; }
-    footer { padding: 30px 20px; flex-direction: column; gap: 16px; text-align: center; }
+    .nav-actions-group { gap: 8px; }
+    .search-action-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      gap: 6px;
+      max-width: 120px;
+    }
+    .search-action-btn span:first-of-type { display: none; }
+    .key-shortcut-tag { display: none; }
+    .nav-icon-button { width: 32px; height: 32px; }
+    #btn-downloads, [title="Watchlist"], [title="Studio Settings"] { display: none; }
+
+    /* Hero */
+    .hero-wrapper {
+      padding: 68px 16px 28px;
+      min-height: 48vh;
+    }
+    .hero-panel-content { max-width: 100%; }
+    .hero-badge-pill { font-size: 9.5px; padding: 3px 9px; margin-bottom: 10px; }
+    .hero-title-text {
+      font-size: 25px;
+      line-height: 1.15;
+      letter-spacing: -0.04em;
+      margin-bottom: 10px;
+    }
+    .hero-metadata-line {
+      font-size: 11.5px;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .hero-synopsis-text {
+      font-size: 12px;
+      -webkit-line-clamp: 2;
+      margin-bottom: 16px;
+    }
+    .hero-actions-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+    .btn-solid-primary, .btn-glass-secondary {
+      padding: 9px 14px;
+      font-size: 12px;
+      flex: 1;
+      justify-content: center;
+      border-radius: 5px;
+    }
+
+    /* Filter Bar */
+    .discovery-filter-container { padding: 12px 16px 0; }
+    .filter-controls-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .filter-dropdowns-group { width: 100%; justify-content: space-between; }
+    .filter-select-dropdown { flex: 1; font-size: 12px; }
+
+    /* Carousel Content */
+    main {
+      padding: 16px 16px 90px;
+      gap: 28px;
+    }
+    .section-headline-title { font-size: 16px; }
+    .carousel-nav-arrows { display: none; }
+    .carousel-scroll-track {
+      gap: 12px;
+      padding: 4px 0 12px;
+      scroll-snap-type: x mandatory;
+    }
+    .cinema-card {
+      flex: 0 0 125px;
+      scroll-snap-align: start;
+      gap: 6px;
+    }
+    .card-meta-title { font-size: 12px; }
+    .card-meta-sub { font-size: 10.5px; }
+
+    /* Media Details Modal */
+    .details-overlay-modal {
+      padding: 0;
+      align-items: flex-end;
+    }
+    .details-card-container {
+      width: 100%;
+      max-height: 88vh;
+      border-radius: 16px 16px 0 0;
+      border-bottom: none;
+    }
+    .details-hero-header { height: 140px; }
+    .details-body-layout {
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      padding: 0 16px 24px;
+      margin-top: -36px;
+      gap: 12px;
+    }
+    .details-poster-box { width: 84px; border-radius: 6px; }
+    .details-title-h2 { font-size: 19px; }
+    .details-synopsis-p { font-size: 12.5px; }
+    .details-action-strip { width: 100%; display: flex; gap: 8px; }
+    .details-action-strip .btn-solid-primary,
+    .details-action-strip .btn-glass-secondary {
+      flex: 1;
+      justify-content: center;
+    }
+    .tv-episodes-grid { grid-template-columns: 1fr; }
+
+    /* Video Player Modal on Mobile */
+    .player-overlay-modal {
+      padding: 0;
+      background: #000000;
+    }
+    .player-screen-center {
+      padding: 12px 14px 60px;
+      gap: 10px;
+      max-height: 100vh;
+      overflow-y: auto;
+    }
+    .player-top-header {
+      padding: 4px 0 6px;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .player-title-info {
+      max-width: calc(100vw - 110px);
+      min-width: 0;
+    }
+    #player-media-title {
+      font-size: 15px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+    #player-media-sub {
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 1px;
+    }
+    .player-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    #btn-toggle-hud, #btn-toggle-pip {
+      display: none !important;
+    }
+    .player-stage-layout {
+      flex-direction: column;
+      gap: 8px;
+    }
+    .player-main-col {
+      gap: 8px;
+    }
+    .player-video-viewport {
+      border-radius: 8px;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000000;
+    }
+    .player-servers-strip {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+    }
+    .server-buttons-grid {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      gap: 6px;
+      flex: 1;
+    }
+    .server-buttons-grid::-webkit-scrollbar { display: none; }
+    .server-tab-btn {
+      flex-shrink: 0;
+      font-size: 11px;
+      padding: 5px 9px;
+      border-radius: 4px;
+    }
+    .skip-intro-btn {
+      flex-shrink: 0;
+      font-size: 11px;
+      padding: 5px 9px;
+      border-radius: 4px;
+    }
+    .party-dock-panel {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      width: 100%;
+      max-height: 55vh;
+      border-radius: 16px 16px 0 0;
+      z-index: 800;
+      box-shadow: 0 -12px 40px rgba(0,0,0,0.95);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+    }
+    .party-dock-panel.collapsed {
+      display: none !important;
+    }
+
+    /* Modals & Settings */
+    .search-palette-box {
+      width: 100%;
+      height: 100%;
+      max-height: 100vh;
+      border-radius: 0;
+      border: none;
+      padding: 16px 16px 80px;
+    }
+    .settings-modal-box, .audio-modal-box, .downloads-drawer-container {
+      width: 100%;
+      max-height: 85vh;
+      border-radius: 16px 16px 0 0;
+      margin-top: auto;
+    }
+    .settings-row-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .settings-input-control { width: 100%; }
+
+    /* ZenPlayer Audio Studio on Mobile */
+    .music-studio-container {
+      padding: 14px 14px 90px;
+      gap: 16px;
+    }
+    .music-studio-hero-card {
+      padding: 20px 14px;
+      gap: 8px;
+      border-radius: 12px;
+    }
+    .music-hero-title {
+      font-size: 22px;
+      line-height: 1.2;
+    }
+    .music-hero-sub {
+      font-size: 12px;
+    }
+    .music-search-bar-box {
+      padding: 4px 4px 4px 12px;
+      gap: 8px;
+    }
+    .music-studio-search-input {
+      font-size: 12.5px;
+    }
+    .music-track-row {
+      padding: 8px 12px;
+      gap: 10px;
+    }
+    .music-track-thumb {
+      width: 40px; height: 40px;
+    }
+    .music-track-title {
+      font-size: 13px;
+    }
+    .music-track-artist {
+      font-size: 11px;
+    }
+    .music-play-btn-pill {
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+
+    .audio-player-overlay {
+      padding: 0;
+      align-items: flex-end;
+    }
+    .audio-player-card {
+      width: 100%;
+      max-height: 88vh;
+      border-radius: 16px 16px 0 0;
+      padding: 18px 16px 28px;
+      gap: 14px;
+      border-bottom: none;
+    }
+    .vinyl-stage {
+      padding: 8px 0;
+    }
+    .vinyl-disc-wrap {
+      width: 150px;
+      height: 150px;
+    }
+    .vinyl-glow {
+      width: 170px;
+      height: 170px;
+    }
+    .audio-track-info h2 {
+      font-size: 16px;
+    }
+    .audio-track-info p {
+      font-size: 12px;
+    }
+    .audio-dsp-strip {
+      gap: 4px;
+      padding-top: 10px;
+    }
+    .audio-dsp-chip {
+      font-size: 10px;
+      padding: 3px 8px;
+    }
+
+    .floating-audio-dock {
+      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+      width: calc(100% - 24px);
+      max-width: 390px;
+      padding: 7px 12px;
+      border-radius: 10px;
+    }
+
+    footer {
+      padding: 24px 16px 90px;
+      flex-direction: column;
+      gap: 12px;
+      text-align: center;
+    }
+  }
+
+  /* Mobile Bottom Navigation */
+  .mobile-bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(17, 18, 16, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-subtle);
+    z-index: 450;
+    align-items: center;
+    justify-content: space-around;
+  }
+  @media (max-width: 768px) {
+    .mobile-bottom-nav { display: flex; }
+  }
+  .mobile-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-family: 'Geist', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+  .mobile-nav-btn.active, .mobile-nav-btn:active {
+    color: var(--accent);
+  }
+  .mobile-nav-btn svg { stroke: currentColor; }
+
+  /* Double Tap Seek Feedback Ripple */
+  .tap-seek-ripple {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(213, 168, 91, 0.25);
+    border: 1px solid var(--accent);
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 10;
+  }
+  .tap-seek-left { left: 15%; }
+  /* ZenPlayer Audio Studio */
+  .audio-player-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(17, 18, 16, 0.94);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    z-index: 950;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .audio-player-overlay.open { display: flex; }
+  .audio-player-card {
+    width: min(440px, 94vw);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.95);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: relative;
+  }
+  .audio-player-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 12px;
+  }
+  .vinyl-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 0 10px;
+    position: relative;
+  }
+  .vinyl-glow {
+    position: absolute;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    filter: blur(30px);
+    pointer-events: none;
+  }
+  .vinyl-disc-wrap {
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: #09090b;
+    border: 4px solid #22231e;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.9), inset 0 0 14px rgba(0,0,0,0.8);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: rotateVinyl 16s linear infinite;
+    animation-play-state: paused;
+  }
+  .vinyl-disc-wrap.spinning {
+    animation-play-state: running;
+  }
+  @keyframes rotateVinyl {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .vinyl-cover-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0.88;
+  }
+  .vinyl-center-spindle {
+    position: absolute;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: #111210;
+    border: 3px solid var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+  }
+  .audio-track-info {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .audio-track-info h2 {
+    font-size: 18px;
+    font-weight: 750;
+    color: var(--text-main);
+    letter-spacing: -0.03em;
+  }
+  .audio-track-info p {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .audio-format-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 10.5px;
+    font-family: 'Geist Mono', monospace;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+
+  /* Audio YouTube Player Box (Unmuted Mobile Sound) */
+  .audio-yt-player-box {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 180px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000000;
+    margin-bottom: 6px;
+    border: 1px solid var(--border-subtle);
+  }
+  .audio-yt-player-box iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  /* Audio Visualizer Waves */
+  .audio-eq-bars-strip {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 5px;
+    height: 36px;
+    padding: 4px 0;
+  }
+  .eq-vbar {
+    width: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    height: 8px;
+    transition: height 0.15s ease;
+  }
+  .eq-vbar.active {
+    animation: bounceBar 0.9s ease-in-out infinite alternate;
+  }
+  .eq-vbar:nth-child(1) { animation-delay: 0.1s; }
+  .eq-vbar:nth-child(2) { animation-delay: 0.25s; }
+  .eq-vbar:nth-child(3) { animation-delay: 0.05s; }
+  .eq-vbar:nth-child(4) { animation-delay: 0.35s; }
+  .eq-vbar:nth-child(5) { animation-delay: 0.15s; }
+  .eq-vbar:nth-child(6) { animation-delay: 0.3s; }
+  .eq-vbar:nth-child(7) { animation-delay: 0.2s; }
+  .eq-vbar:nth-child(8) { animation-delay: 0.4s; }
+  .eq-vbar:nth-child(9) { animation-delay: 0.1s; }
+  .eq-vbar:nth-child(10) { animation-delay: 0.3s; }
+  .eq-vbar:nth-child(11) { animation-delay: 0.18s; }
+  .eq-vbar:nth-child(12) { animation-delay: 0.28s; }
+  @keyframes bounceBar {
+    0% { height: 6px; }
+    100% { height: 32px; }
+  }
+
+  /* Audio Scrub Bar */
+  .audio-scrub-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+  }
+  .audio-scrub-touch-hitbox {
+    width: 100%;
+    padding: 10px 0;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .audio-scrub-track {
+    width: 100%;
+    height: 6px;
+    background: #282924;
+    border-radius: 3px;
+    position: relative;
+  }
+  .audio-scrub-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 3px;
+    position: relative;
+  }
+  .audio-scrub-handle {
+    position: absolute;
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 6px rgba(213, 168, 91, 0.6);
+    border: 2px solid var(--accent);
+    cursor: grab;
+    transition: transform 0.1s ease;
+    touch-action: none;
+  }
+  .audio-scrub-handle:active, .audio-scrub-touch-hitbox.dragging .audio-scrub-handle {
+    transform: translateY(-50%) scale(1.4);
+    cursor: grabbing;
+    background: var(--accent);
+    border-color: #ffffff;
+  }
+  .audio-time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    color: var(--text-muted);
+  }
+
+  /* Audio Controls */
+  .audio-controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 4px;
+  }
+  .audio-ctrl-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px;
+    transition: all 0.15s ease;
+  }
+  .audio-ctrl-btn:hover { color: var(--text-main); transform: scale(1.1); }
+  .audio-play-main-btn {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #171712;
+    border: none;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px var(--accent-glow);
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .audio-play-main-btn:hover {
+    transform: scale(1.06);
+    background: var(--accent-hover);
+  }
+
+  /* Audio DSP Presets */
+  .audio-dsp-strip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 14px;
+  }
+  .audio-dsp-chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-family: 'Geist', sans-serif;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .audio-dsp-chip:hover { border-color: var(--border-hover); color: var(--text-main); }
+  .audio-dsp-chip.active {
+    background: var(--accent);
+    color: #171712;
+    border-color: var(--accent);
+  }
+
+  /* Floating Mini Audio Bar */
+  .floating-audio-dock {
+    position: fixed;
+    bottom: 74px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(460px, 92vw);
+    background: rgba(24, 25, 22, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-medium);
+    border-radius: 12px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 500;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9);
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  @media (max-width: 768px) {
+    .floating-audio-dock {
+      bottom: 68px;
+    }
+  }
+  .floating-audio-dock:hover {
+    border-color: var(--accent);
+    transform: translateX(-50%) translateY(-2px);
+  }
+  .mini-audio-thumb-img {
+    width: 36px; height: 36px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #09090b;
+  }
+  .mini-audio-details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .mini-audio-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mini-audio-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mini-eq-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 16px;
+  }
+  .meq-bar {
+    width: 3px; height: 6px;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: miniBounce 0.8s ease infinite alternate;
+  }
+  .meq-bar:nth-child(2) { animation-delay: 0.2s; }
+  .meq-bar:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes miniBounce {
+    from { height: 4px; }
+    to { height: 16px; }
+  }
+  .mini-audio-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-main);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* Music Studio Page */
+  .music-studio-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 30px 24px 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    width: 100%;
+  }
+  @media (max-width: 768px) {
+    .music-studio-container {
+      padding: 16px 16px 85px;
+      gap: 20px;
+    }
+  }
+  .music-studio-hero-card {
+    background: linear-gradient(180deg, rgba(32, 34, 29, 0.8) 0%, rgba(24, 25, 22, 0.95) 100%);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  }
+  .music-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(213, 168, 91, 0.12);
+    border: 1px solid rgba(213, 168, 91, 0.3);
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+  .music-hero-title {
+    font-size: 28px;
+    font-weight: 850;
+    letter-spacing: -0.04em;
+    color: var(--text-main);
+  }
+  .music-hero-sub {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    max-width: 520px;
+  }
+  .music-search-bar-box {
+    width: 100%;
+    max-width: 580px;
+    background: rgba(17, 18, 16, 0.95);
+    border: 1px solid var(--border-medium);
+    border-radius: 10px;
+    padding: 6px 6px 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    transition: border-color 0.2s ease;
+  }
+  .music-search-bar-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(213, 168, 91, 0.15);
+  }
+  .music-studio-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-main);
+    font-size: 13.5px;
+    font-family: 'Geist', sans-serif;
+  }
+  .music-results-container {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .music-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .music-tracks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .music-track-row {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .music-track-row:hover {
+    background: var(--bg-card);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+  }
+  .music-track-thumb {
+    width: 44px; height: 44px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #09090b;
+    flex-shrink: 0;
+  }
+  .music-track-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .music-track-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .music-track-artist {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .music-track-dur {
+    font-size: 12px;
+    font-family: 'Geist Mono', monospace;
+    color: var(--text-muted);
+  }
+  .music-play-btn-pill {
+    background: rgba(213, 168, 91, 0.12);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 11.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .music-track-row:hover .music-play-btn-pill {
+    background: var(--accent);
+    color: #111210;
   }
 </style>
 </head>
@@ -1571,6 +2513,7 @@
       <li><a class="nav-item-link" id="nav-movies" onclick="switchNav('movies')">Movies</a></li>
       <li><a class="nav-item-link" id="nav-tv" onclick="switchNav('tv')">Series</a></li>
       <li><a class="nav-item-link" id="nav-anime" onclick="switchNav('anime')">Anime</a></li>
+      <li><a class="nav-item-link" id="nav-music" onclick="switchNav('music')">Music</a></li>
       <li><a class="nav-item-link" id="nav-magnet" onclick="openMagnetModal()">Magnet Stream</a></li>
     </ul>
   </div>
@@ -1732,7 +2675,50 @@
     </div>
     <div class="carousel-scroll-track" id="track-anime"></div>
   </div>
+
+  <div class="content-section-block" id="sec-music">
+    <div class="section-headline-bar">
+      <div class="section-headline-title" id="title-music">
+        <span>Trending Music & Soundtracks</span>
+        <span class="section-badge-tag">LOSSLESS FLAC</span>
+      </div>
+      <div class="carousel-nav-arrows">
+        <button class="nav-arrow-btn" onclick="scrollTrack('track-music', -450)">‹</button>
+        <button class="nav-arrow-btn" onclick="scrollTrack('track-music', 450)">›</button>
+      </div>
+    </div>
+    <div class="carousel-scroll-track" id="track-music"></div>
+  </div>
 </main>
+
+<!-- Dedicated ZenPlayer Music Studio (Active when on Music tab) -->
+<div class="music-studio-container" id="sec-music-studio" style="display: none;">
+  <div class="music-studio-hero-card">
+    <div class="music-hero-badge">
+      <span class="status-led-dot"></span>
+      <span>ZENPLAYER AUDIO ENGINE</span>
+    </div>
+    <h1 class="music-hero-title">ZenPlayer Music & Audio</h1>
+    <p class="music-hero-sub">Stream any song, artist, album, or YouTube track in high fidelity with real-time DSP.</p>
+    
+    <div class="music-search-bar-box">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+      <input type="text" id="music-studio-search-input" class="music-studio-search-input" placeholder="Search any song, artist, or YouTube track (e.g. Arijit Singh, Daft Punk, Interstellar)..." onkeydown="if(event.key==='Enter') executeMusicSearch()">
+      <button class="btn-solid-primary" style="padding: 8px 18px; font-size: 13px;" onclick="executeMusicSearch()">Search</button>
+    </div>
+  </div>
+
+  <!-- Music Results / Tracklist View -->
+  <div class="music-results-container">
+    <div class="music-results-header">
+      <h3 id="music-results-title" style="font-size: 17px; font-weight: 800;">Trending Songs & Soundtracks</h3>
+      <span id="music-results-status" style="font-size: 12px; color: var(--text-muted);">Instant Audio Playback</span>
+    </div>
+    <div class="music-tracks-list" id="music-tracks-list">
+      <div style="color: var(--text-muted); padding: 24px; text-align: center; font-size: 13px;">Loading music tracks...</div>
+    </div>
+  </div>
+</div>
 
 <!-- player modal -->
 <div class="player-overlay-modal" id="player-modal">
@@ -1742,16 +2728,15 @@
         <h2 id="player-media-title">ZenTorrent Stream Studio</h2>
         <span id="player-media-sub">Stream Engine • Auto Quality</span>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div class="player-header-actions" style="display: flex; align-items: center; gap: 8px;">
         <button class="nav-icon-button" id="btn-toggle-audio-eq" title="Audio EQ (E)" onclick="openAudioModal()"><span style="font-size:13px;">🎧</span></button>
-        <button class="nav-icon-button" id="btn-toggle-pip" title="Mini Player (I)" onclick="toggleZenFloatPiP()"><span style="font-size:13px;">🖼️</span></button>
         <button class="nav-icon-button" id="btn-toggle-party-dock" title="Toggle ZenParty Theater (P)" onclick="togglePartyDock()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         </button>
         <button class="nav-icon-button" id="btn-toggle-hud" title="Stream Stats (H)" onclick="toggleSwarmHUD()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
         </button>
-        <button class="nav-icon-button" onclick="closePlayer()">✕</button>
+        <button class="nav-icon-button" onclick="closePlayer()" style="font-weight: 700;">✕</button>
       </div>
     </div>
 
@@ -1821,8 +2806,8 @@
         </div>
       </div>
 
-      <!-- ZenParty Pro Cinema Dock Panel -->
-      <div class="party-dock-panel" id="party-dock-panel">
+      <!-- ZenParty Pro Cinema Dock Panel (Collapsed by default) -->
+      <div class="party-dock-panel collapsed" id="party-dock-panel">
         <div class="party-dock-header">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="party-room-code-badge" title="Click to Copy Room Invite" onclick="copyPartyLink()">
@@ -2217,6 +3202,20 @@ window.addEventListener('DOMContentLoaded', () => {
   loadHomeFeed();
   renderContinueWatching();
   pollDownloads();
+  initScrubDrag();
+
+  // Mobile WebKit / Safari Audio Context Unlock
+  const unlockAudio = () => {
+    const el = document.getElementById('zen-audio-native');
+    if (el) {
+      el.muted = false;
+      el.volume = 1.0;
+    }
+    window.removeEventListener('touchstart', unlockAudio);
+    window.removeEventListener('click', unlockAudio);
+  };
+  window.addEventListener('touchstart', unlockAudio, { passive: true });
+  window.addEventListener('click', unlockAudio, { passive: true });
 
   window.addEventListener('keydown', (e) => {
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
@@ -2305,18 +3304,20 @@ function renderRow(trackId, items) {
   track.innerHTML = items.map(it => {
     const poster = resolveImg(it.poster_path || it.backdrop_path, 'w500', it.imdb_id);
     const rating = (it.vote_average || 8.0).toFixed(1);
-    const typeLabel = it.media_type === 'tv' ? 'Series' : (it.media_type === 'anime' ? 'Anime' : 'Movie');
+    const isMusic = it.media_type === 'music';
+    const typeLabel = isMusic ? 'Audio' : (it.media_type === 'tv' ? 'Series' : (it.media_type === 'anime' ? 'Anime' : 'Movie'));
+    const clickHandler = isMusic ? `openZenAudioPlayer(${JSON.stringify(it).replace(/'/g, "&#39;")})` : `openDetails(${JSON.stringify(it).replace(/'/g, "&#39;")})`;
 
     return `
-      <div class="cinema-card" onclick='openDetails(${JSON.stringify(it).replace(/'/g, "&#39;")})'>
+      <div class="cinema-card" onclick='${clickHandler}'>
         <div class="card-poster-frame">
-          <img class="card-poster-img" src="${poster}" alt="${it.title}" loading="lazy" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src='https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80';}">
+          <img class="card-poster-img" src="${poster}" alt="${it.title}" loading="lazy" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';}">
           <div class="card-corner-badges">
             <span class="badge-rating-pill">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
               ${rating}
             </span>
-            <span class="badge-res-pill">${it.quality || '4K'}</span>
+            <span class="badge-res-pill">${it.quality || (isMusic ? 'FLAC' : '4K')}</span>
           </div>
           <div class="card-hover-overlay">
             <div class="play-glass-disc">
@@ -2347,11 +3348,25 @@ function switchNav(type) {
   const activeLink = $(`nav-${type}`);
   if (activeLink) activeLink.classList.add('active');
 
-  $('hero-sec').style.display = 'flex';
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  const activeMob = $(`mob-nav-${type}`);
+  if (activeMob) activeMob.classList.add('active');
 
-  if (type === 'home') {
+  if (type === 'music') {
+    // Dedicated Music Studio View (No movie recommendations, No 4K Stream button)
+    $('hero-sec').style.display = 'none';
     $('discovery-filter-sec').style.display = 'none';
     $('sec-filtered-grid').style.display = 'none';
+    $('main-content').style.display = 'none';
+    $('sec-music-studio').style.display = 'flex';
+    if (spotlightInterval) clearInterval(spotlightInterval);
+    loadInitialMusic();
+  } else if (type === 'home') {
+    $('hero-sec').style.display = 'flex';
+    $('discovery-filter-sec').style.display = 'none';
+    $('sec-filtered-grid').style.display = 'none';
+    $('sec-music-studio').style.display = 'none';
+    $('main-content').style.display = 'block';
     currentSpotlight = (homeData.spotlight || []).slice(0, 5);
     renderSpotlight(0);
     renderSpotlightThumbs();
@@ -2359,11 +3374,16 @@ function switchNav(type) {
     $('sec-trending-movies').style.display = 'block';
     $('sec-trending-tv').style.display = 'block';
     $('sec-anime').style.display = 'block';
+    if ($('sec-music')) $('sec-music').style.display = 'block';
     renderRow('track-movies', homeData.trending_movies || []);
     renderRow('track-tv', homeData.trending_tv || []);
     renderRow('track-anime', homeData.anime || []);
+    renderRow('track-music', homeData.music || []);
   } else {
+    $('hero-sec').style.display = 'flex';
     $('discovery-filter-sec').style.display = 'block';
+    $('sec-music-studio').style.display = 'none';
+    $('main-content').style.display = 'block';
     if (type === 'movies') {
       currentSpotlight = (homeData.trending_movies || []).slice(0, 5);
     } else if (type === 'tv') {
@@ -2403,7 +3423,8 @@ function applyFilters() {
   if (currentNavTab === 'movies') pool = [...(homeData.trending_movies || [])];
   else if (currentNavTab === 'tv') pool = [...(homeData.trending_tv || [])];
   else if (currentNavTab === 'anime') pool = [...(homeData.anime || [])];
-  else pool = [...(homeData.trending_movies || []), ...(homeData.trending_tv || []), ...(homeData.anime || [])];
+  else if (currentNavTab === 'music') pool = [...(homeData.music || [])];
+  else pool = [...(homeData.trending_movies || []), ...(homeData.trending_tv || []), ...(homeData.anime || []), ...(homeData.music || [])];
 
   const seen = new Set();
   pool = pool.filter(item => {
@@ -3427,6 +4448,545 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+// Mobile Touch Double-Tap Seek Gestures
+let lastTapTime = 0;
+const playerViewport = $('player-viewport-area');
+if (playerViewport) {
+  playerViewport.addEventListener('touchend', (e) => {
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTapTime;
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      const touch = e.changedTouches[0];
+      if (tapLength < 350 && tapLength > 0) {
+        const rect = playerViewport.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        if (x < rect.width / 2) {
+          showSeekFeedback('left', '⏪ 10s');
+        } else {
+          showSeekFeedback('right', '10s ⏩');
+        }
+      }
+      lastTapTime = currentTime;
+    }
+  });
+}
+
+function showSeekFeedback(side, text) {
+  let ripple = document.querySelector(`.tap-seek-${side}`);
+  if (!ripple && playerViewport) {
+    ripple = document.createElement('div');
+    ripple.className = `tap-seek-ripple tap-seek-${side}`;
+    playerViewport.appendChild(ripple);
+  }
+  if (ripple) {
+    ripple.innerText = text;
+    ripple.classList.add('active');
+    setTimeout(() => ripple.classList.remove('active'), 500);
+  }
+}
+
+// ZenPlayer Audio Suite
+let currentAudioTrack = null;
+let audioPlaylist = [];
+let audioTrackIndex = 0;
+let isAudioPlaying = false;
+let audioPlayTimer = null;
+let currentAudioSeconds = 0;
+let totalAudioSeconds = 236;
+let isShuffle = false;
+let isRepeat = false;
+let liveMusicTracks = [];
+let zenAudioEl = null;
+let zenYTIframe = null;
+
+async function loadInitialMusic() {
+  const list = $('music-tracks-list');
+  if (list) list.innerHTML = '<div style="color: var(--text-muted); padding: 24px; text-align: center; font-size: 13px;">Loading trending audio & soundtracks...</div>';
+  if ($('music-results-title')) $('music-results-title').innerText = "Trending Songs & Soundtracks";
+  try {
+    const res = await fetch('/api/music/trending');
+    const tracks = await res.json();
+    liveMusicTracks = tracks || [];
+    renderMusicTracklist(liveMusicTracks);
+  } catch (err) {
+    renderMusicTracklist(demoAudioStreams);
+  }
+}
+
+async function executeMusicSearch() {
+  const input = $('music-studio-search-input');
+  if (!input) return;
+  const query = input.value.trim();
+  if (!query) {
+    loadInitialMusic();
+    return;
+  }
+  const list = $('music-tracks-list');
+  if (list) list.innerHTML = `<div style="color: var(--text-muted); padding: 24px; text-align: center; font-size: 13px;">Searching YouTube & lossless tracks for "${query}"...</div>`;
+  if ($('music-results-title')) $('music-results-title').innerText = `Search Results: "${query}"`;
+  try {
+    const res = await fetch(`/api/music/search?q=${encodeURIComponent(query)}`);
+    const tracks = await res.json();
+    liveMusicTracks = tracks || [];
+    if (liveMusicTracks.length === 0) {
+      if (list) list.innerHTML = `<div style="color: var(--text-muted); padding: 24px; text-align: center; font-size: 13px;">No tracks found for "${query}". Try another artist or song name.</div>`;
+      return;
+    }
+    renderMusicTracklist(liveMusicTracks);
+  } catch (err) {
+    if (list) list.innerHTML = `<div style="color: #ef4444; padding: 24px; text-align: center; font-size: 13px;">Search failed. Please try again.</div>`;
+  }
+}
+
+function renderMusicTracklist(tracks) {
+  const list = $('music-tracks-list');
+  if (!list) return;
+  if (!tracks || tracks.length === 0) {
+    list.innerHTML = '<div style="color: var(--text-muted); padding: 24px; text-align: center; font-size: 13px;">No tracks available.</div>';
+    return;
+  }
+  list.innerHTML = tracks.map((t, idx) => {
+    const durStr = formatAudioTime(t.duration || 210);
+    const cover = t.cover_url || t.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';
+    return `
+      <div class="music-track-row" onclick='playTrackByIndex(${idx})'>
+        <img class="music-track-thumb" src="${cover}" alt="" onerror="this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80'">
+        <div class="music-track-meta">
+          <div class="music-track-title">${t.title}</div>
+          <div class="music-track-artist">${t.artist || 'ZenPlayer Studio'} ${t.album ? '• ' + t.album : ''}</div>
+        </div>
+        <div class="music-track-dur">${durStr}</div>
+        <button class="music-play-btn-pill" onclick="event.stopPropagation(); playTrackByIndex(${idx});">
+          <span>▶</span>
+          <span>Play</span>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function playTrackByIndex(idx) {
+  if (!liveMusicTracks || idx >= liveMusicTracks.length) return;
+  audioPlaylist = liveMusicTracks;
+  audioTrackIndex = idx;
+  loadAudioTrack(audioPlaylist[idx]);
+  $('audio-player-modal').classList.add('open');
+  $('floating-audio-bar').style.display = 'none';
+  playAudio();
+}
+
+const demoAudioStreams = [
+  {
+    title: "Cornfield Chase (Interstellar OST)",
+    artist: "Hans Zimmer · Interstellar",
+    format: "FLAC 24-bit / 96kHz Lossless • Direct DSP",
+    cover: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80",
+    duration: 236
+  },
+  {
+    title: "Paul's Dream (Dune: Part Two)",
+    artist: "Hans Zimmer · Dune: Part Two",
+    format: "Dolby Atmos 7.1.4 • Master Audio",
+    cover: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&q=80",
+    duration: 258
+  },
+  {
+    title: "Can You Hear The Music (Oppenheimer)",
+    artist: "Ludwig Göransson · Oppenheimer OST",
+    format: "FLAC 24-bit • Studio Master",
+    cover: "https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=600&q=80",
+    duration: 184
+  },
+  {
+    title: "Starboy (feat. Daft Punk)",
+    artist: "The Weeknd, Daft Punk",
+    format: "320 kbps High-Bitrate Stereo",
+    cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&q=80",
+    duration: 230
+  },
+  {
+    title: "Midnight City",
+    artist: "M83 · Hurry Up, We're Dreaming",
+    format: "Lossless FLAC • 24-bit",
+    cover: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80",
+    duration: 243
+  },
+  {
+    title: "Kun Faya Kun (Rockstar)",
+    artist: "A.R. Rahman, Mohit Chauhan, Javed Ali",
+    format: "Lossless Audio Master • Acoustic Sufi",
+    cover: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=600&q=80",
+    duration: 473
+  }
+];
+
+function openZenAudioPlayer(item) {
+  if (liveMusicTracks && liveMusicTracks.length > 0) {
+    audioPlaylist = liveMusicTracks;
+  } else if (homeData.music && homeData.music.length > 0) {
+    audioPlaylist = homeData.music;
+  } else {
+    audioPlaylist = demoAudioStreams;
+  }
+  
+  const foundIdx = audioPlaylist.findIndex(t => t.title === item.title || (item.id && t.id === item.id));
+  audioTrackIndex = foundIdx >= 0 ? foundIdx : 0;
+  loadAudioTrack(audioPlaylist[audioTrackIndex]);
+
+  $('audio-player-modal').classList.add('open');
+  $('floating-audio-bar').style.display = 'none';
+  playAudio();
+}
+
+function loadAudioTrack(track) {
+  currentAudioTrack = track;
+  $('audio-track-title').innerText = track.title;
+  $('audio-track-artist').innerText = track.artist || (track.overview ? track.overview.split('·')[0].trim() : 'Hans Zimmer');
+  $('audio-track-format').innerText = track.format ? `${track.format} • Direct DSP` : (track.quality ? `${track.quality} Lossless • Direct DSP` : 'FLAC 24-bit Lossless');
+  
+  const coverUrl = track.cover_url || track.cover || resolveImg(track.poster_path || track.cover, 'w500');
+  if ($('audio-cover-art')) $('audio-cover-art').src = coverUrl;
+  if ($('mini-audio-thumb')) $('mini-audio-thumb').src = coverUrl;
+  if ($('mini-audio-title')) $('mini-audio-title').innerText = track.title;
+  if ($('mini-audio-artist')) $('mini-audio-artist').innerText = $('audio-track-artist').innerText;
+  
+  currentAudioSeconds = 0;
+  totalAudioSeconds = track.duration || 236;
+  $('audio-time-total').innerText = formatAudioTime(totalAudioSeconds);
+  $('audio-time-current').innerText = "0:00";
+  $('audio-scrub-progress').style.width = "0%";
+
+  const ytFrame = $('zen-yt-audio-frame');
+  const ytId = track.youtube_id || 'JuSsvM8B4Jc';
+  if (ytFrame) {
+    ytFrame.src = `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&enablejsapi=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`;
+  }
+}
+
+function playAudio() {
+  isAudioPlaying = true;
+  $('vinyl-disc').classList.add('spinning');
+  document.querySelectorAll('.eq-vbar').forEach(b => b.classList.add('active'));
+  $('audio-play-icon').innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+  $('btn-mini-play').innerText = '⏸';
+  
+  if (zenAudioEl && zenAudioEl.src && zenAudioEl.src !== window.location.href) {
+    zenAudioEl.muted = false;
+    zenAudioEl.volume = 1.0;
+    const playPromise = zenAudioEl.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        if (currentAudioTrack && currentAudioTrack.youtube_id && zenYTIframe) {
+          zenYTIframe.src = `https://www.youtube-nocookie.com/embed/${currentAudioTrack.youtube_id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+        }
+      });
+    }
+  }
+  if (zenYTIframe && zenYTIframe.contentWindow) {
+    try {
+      zenYTIframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+    } catch(e) {}
+  }
+
+  if (audioPlayTimer) clearInterval(audioPlayTimer);
+  audioPlayTimer = setInterval(() => {
+    if (!isScrubDragging) {
+      if (currentAudioSeconds < totalAudioSeconds) {
+        currentAudioSeconds++;
+        $('audio-time-current').innerText = formatAudioTime(currentAudioSeconds);
+        const pct = (currentAudioSeconds / totalAudioSeconds) * 100;
+        $('audio-scrub-progress').style.width = `${pct}%`;
+      } else {
+        if (isRepeat) {
+          currentAudioSeconds = 0;
+          if (zenYTIframe && zenYTIframe.contentWindow) {
+            try {
+              zenYTIframe.contentWindow.postMessage('{"event":"command","func":"seekTo","args":[0, true]}', '*');
+            } catch(e) {}
+          }
+        } else {
+          nextAudioTrack();
+        }
+      }
+    }
+  }, 1000);
+}
+
+function pauseAudio() {
+  isAudioPlaying = false;
+  $('vinyl-disc').classList.remove('spinning');
+  document.querySelectorAll('.eq-vbar').forEach(b => b.classList.remove('active'));
+  $('audio-play-icon').innerHTML = '<polygon points="6 3 20 12 6 21 6 3"></polygon>';
+  $('btn-mini-play').innerText = '▶';
+  if (zenAudioEl) zenAudioEl.pause();
+  if (zenYTIframe && zenYTIframe.contentWindow) {
+    try {
+      zenYTIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+    } catch(e) {}
+  }
+  if (audioPlayTimer) clearInterval(audioPlayTimer);
+}
+
+function toggleAudioPlayPause() {
+  if (isAudioPlaying) {
+    pauseAudio();
+  } else {
+    playAudio();
+  }
+}
+
+function prevAudioTrack() {
+  if (audioPlaylist.length === 0) return;
+  audioTrackIndex = (audioTrackIndex - 1 + audioPlaylist.length) % audioPlaylist.length;
+  loadAudioTrack(audioPlaylist[audioTrackIndex]);
+  playAudio();
+}
+
+function nextAudioTrack() {
+  if (audioPlaylist.length === 0) return;
+  if (isShuffle) {
+    audioTrackIndex = Math.floor(Math.random() * audioPlaylist.length);
+  } else {
+    audioTrackIndex = (audioTrackIndex + 1) % audioPlaylist.length;
+  }
+  loadAudioTrack(audioPlaylist[audioTrackIndex]);
+  playAudio();
+}
+
+function toggleShuffle() {
+  isShuffle = !isShuffle;
+  $('btn-audio-shuffle').style.color = isShuffle ? 'var(--accent)' : 'var(--text-secondary)';
+  showToast(isShuffle ? '🔀 Shuffle On' : 'Shuffle Off');
+}
+
+function toggleRepeat() {
+  isRepeat = !isRepeat;
+  $('btn-audio-repeat').style.color = isRepeat ? 'var(--accent)' : 'var(--text-secondary)';
+  showToast(isRepeat ? '🔁 Repeat Track On' : 'Repeat Off');
+}
+
+let isScrubDragging = false;
+
+function initScrubDrag() {
+  const hitbox = $('audio-scrub-hitbox');
+  if (!hitbox) return;
+
+  function updateScrubPos(clientX) {
+    const rect = hitbox.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const pct = Math.max(0, Math.min(1, clickX / rect.width));
+    currentAudioSeconds = Math.floor(pct * totalAudioSeconds);
+    $('audio-time-current').innerText = formatAudioTime(currentAudioSeconds);
+    $('audio-scrub-progress').style.width = `${pct * 100}%`;
+    
+    if (zenAudioEl && zenAudioEl.duration && !zenAudioEl.paused) {
+      zenAudioEl.currentTime = currentAudioSeconds;
+    }
+    if (zenYTIframe && zenYTIframe.contentWindow) {
+      try {
+        zenYTIframe.contentWindow.postMessage(`{"event":"command","func":"seekTo","args":[${currentAudioSeconds}, true]}`, '*');
+      } catch(e) {}
+    }
+  }
+
+  // Touch Events (Finger Dragging on Mobile)
+  hitbox.addEventListener('touchstart', (e) => {
+    isScrubDragging = true;
+    hitbox.classList.add('dragging');
+    if (e.touches && e.touches.length > 0) {
+      updateScrubPos(e.touches[0].clientX);
+    }
+  }, { passive: false });
+
+  window.addEventListener('touchmove', (e) => {
+    if (isScrubDragging && e.touches && e.touches.length > 0) {
+      e.preventDefault();
+      updateScrubPos(e.touches[0].clientX);
+    }
+  }, { passive: false });
+
+  window.addEventListener('touchend', () => {
+    if (isScrubDragging) {
+      isScrubDragging = false;
+      hitbox.classList.remove('dragging');
+    }
+  });
+
+  // Mouse Events (Desktop Dragging)
+  hitbox.addEventListener('mousedown', (e) => {
+    isScrubDragging = true;
+    hitbox.classList.add('dragging');
+    updateScrubPos(e.clientX);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isScrubDragging) {
+      updateScrubPos(e.clientX);
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isScrubDragging) {
+      isScrubDragging = false;
+      hitbox.classList.remove('dragging');
+    }
+  });
+}
+
+function formatAudioTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function setAudioDSP(preset) {
+  document.querySelectorAll('.audio-dsp-chip').forEach(c => {
+    c.classList.toggle('active', c.getAttribute('onclick').includes(`'${preset}'`));
+  });
+  showToast(`Audio DSP: ${preset.toUpperCase()} Engaged`);
+}
+
+function minimizeZenAudioPlayer() {
+  $('audio-player-modal').classList.remove('open');
+  if (currentAudioTrack) {
+    $('floating-audio-bar').style.display = 'flex';
+  }
+}
+
+function expandZenAudioPlayer() {
+  $('floating-audio-bar').style.display = 'none';
+  $('audio-player-modal').classList.add('open');
+}
+
+function closeZenAudioPlayer() {
+  pauseAudio();
+  $('audio-player-modal').classList.remove('open');
+  $('floating-audio-bar').style.display = 'none';
+  currentAudioTrack = null;
+}
+
+// Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 </script>
+
+<!-- ZenPlayer Audio Modal -->
+<div class="audio-player-overlay" id="audio-player-modal" onclick="if(event.target===this) minimizeZenAudioPlayer()">
+  <div class="audio-player-card">
+    <div class="audio-player-top">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="brand-emblem" style="width:22px; height:22px; font-size:11px; border-radius:4px;">Z</span>
+        <span style="font-size:12px; font-family:'Geist Mono', monospace; color:var(--accent); font-weight:700; letter-spacing:0.08em;">ZENPLAYER AUDIO</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="ctrl-icon-btn" onclick="minimizeZenAudioPlayer()" title="Minimize to Mini Bar" style="font-size: 15px;">─</button>
+        <button class="ctrl-icon-btn" onclick="closeZenAudioPlayer()" title="Close Player" style="font-size: 14px;">✕</button>
+      </div>
+    </div>
+
+    <div class="audio-player-body">
+      <!-- YouTube Audio Engine Viewport (Guaranteed unmuted sound across iOS & Android) -->
+      <div class="audio-yt-player-box" id="audio-yt-box">
+        <iframe id="zen-yt-audio-frame" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      </div>
+
+      <!-- Track Metadata -->
+      <div class="audio-track-info">
+        <h2 id="audio-track-title">Cornfield Chase</h2>
+        <p id="audio-track-artist">Hans Zimmer · Interstellar OST</p>
+        <div class="audio-format-badge">
+          <span class="status-led-dot"></span>
+          <span id="audio-track-format">FLAC 24-bit / 96kHz Lossless • Direct DSP</span>
+        </div>
+      </div>
+
+      <!-- Real-Time Equalizer Waveform -->
+      <div class="audio-eq-bars-strip" id="audio-eq-visualizer">
+        <div class="eq-vbar"></div><div class="eq-vbar"></div><div class="eq-vbar"></div>
+        <div class="eq-vbar"></div><div class="eq-vbar"></div><div class="eq-vbar"></div>
+        <div class="eq-vbar"></div><div class="eq-vbar"></div><div class="eq-vbar"></div>
+        <div class="eq-vbar"></div><div class="eq-vbar"></div><div class="eq-vbar"></div>
+      </div>
+
+      <!-- Interactive Touch-Draggable Scrub Bar -->
+      <div class="audio-scrub-wrap">
+        <div class="audio-scrub-touch-hitbox" id="audio-scrub-hitbox">
+          <div class="audio-scrub-track" id="audio-scrub-bar">
+            <div class="audio-scrub-fill" id="audio-scrub-progress">
+              <div class="audio-scrub-handle" id="audio-scrub-thumb"></div>
+            </div>
+          </div>
+        </div>
+        <div class="audio-time-row">
+          <span id="audio-time-current">0:00</span>
+          <span id="audio-time-total">3:56</span>
+        </div>
+      </div>
+
+      <!-- Transport Controls -->
+      <div class="audio-controls-row">
+        <button class="audio-ctrl-btn" onclick="toggleShuffle()" id="btn-audio-shuffle" title="Shuffle">🔀</button>
+        <button class="audio-ctrl-btn" onclick="prevAudioTrack()" title="Previous Track">⏮</button>
+        <button class="audio-play-main-btn" id="btn-audio-play-pause" onclick="toggleAudioPlayPause()">
+          <svg id="audio-play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+        </button>
+        <button class="audio-ctrl-btn" onclick="nextAudioTrack()" title="Next Track">⏭</button>
+        <button class="audio-ctrl-btn" onclick="toggleRepeat()" id="btn-audio-repeat" title="Repeat">🔁</button>
+      </div>
+
+      <!-- DSP Audio Equalizer Presets -->
+      <div class="audio-dsp-strip">
+        <button class="audio-dsp-chip active" onclick="setAudioDSP('flat')">Flat</button>
+        <button class="audio-dsp-chip" onclick="setAudioDSP('bass')">Bass Boost (+8dB)</button>
+        <button class="audio-dsp-chip" onclick="setAudioDSP('vocal')">Vocal Clarity</button>
+        <button class="audio-dsp-chip" onclick="setAudioDSP('vinyl')">Warm Vinyl</button>
+        <button class="audio-dsp-chip" onclick="setAudioDSP('spatial')">3D Surround</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Docked Floating Mini Audio Bar -->
+<div class="floating-audio-dock" id="floating-audio-bar" style="display: none;" onclick="expandZenAudioPlayer()">
+  <img id="mini-audio-thumb" src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80" alt="" class="mini-audio-thumb-img">
+  <div class="mini-audio-details">
+    <span class="mini-audio-name" id="mini-audio-title">Cornfield Chase</span>
+    <span class="mini-audio-sub" id="mini-audio-artist">Hans Zimmer</span>
+  </div>
+  <div class="mini-eq-bars">
+    <div class="meq-bar"></div><div class="meq-bar"></div><div class="meq-bar"></div>
+  </div>
+  <button class="mini-audio-btn" onclick="event.stopPropagation(); toggleAudioPlayPause();" id="btn-mini-play">⏸</button>
+  <button class="mini-audio-btn" onclick="event.stopPropagation(); closeZenAudioPlayer();">✕</button>
+</div>
+
+<!-- Mobile Bottom Navigation -->
+<div class="mobile-bottom-nav">
+  <button class="mobile-nav-btn active" id="mob-nav-home" onclick="switchNav('home')">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    <span>Discover</span>
+  </button>
+  <button class="mobile-nav-btn" id="mob-nav-movies" onclick="switchNav('movies')">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="22" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+    <span>Movies</span>
+  </button>
+  <button class="mobile-nav-btn" id="mob-nav-music" onclick="switchNav('music')">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+    <span>Music</span>
+  </button>
+  <button class="mobile-nav-btn" onclick="openSearch()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+    <span>Search</span>
+  </button>
+  <button class="mobile-nav-btn" onclick="openPartyModal()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    <span>Party</span>
+  </button>
+</div>
+
 </body>
 </html>

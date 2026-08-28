@@ -71,6 +71,7 @@ type HomeResponse struct {
 	TrendingMovies []MediaCard `json:"trending_movies"`
 	TrendingTV     []MediaCard `json:"trending_tv"`
 	Anime          []MediaCard `json:"anime"`
+	Music          []MediaCard `json:"music"`
 	TopRatedMovies []MediaCard `json:"top_rated_movies"`
 	TopRatedTV     []MediaCard `json:"top_rated_tv"`
 	ActionSciFi    []MediaCard `json:"action_scifi"`
@@ -525,17 +526,72 @@ var masterAnime = []MediaCard{
 	},
 }
 
-func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
-	if data, ok := getWebCache("home_feed_v4"); ok {
-		writeJSON(w, data)
-		return
-	}
+var masterMusic = []MediaCard{
+	{
+		ID: 1001, Title: "Cornfield Chase (Interstellar OST)", Year: 2014,
+		Overview: "Hans Zimmer's iconic organ masterpiece from Christopher Nolan's Interstellar. Uncompressed dynamic studio master.",
+		PosterPath: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80",
+		BackdropPath: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=1200&q=80",
+		MediaType: "music", VoteAverage: 9.9, Genres: []string{"Soundtrack", "Classical", "Cinematic"}, Quality: "FLAC 24-bit",
+	},
+	{
+		ID: 1002, Title: "Paul's Dream (Dune: Part Two)", Year: 2024,
+		Overview: "Hans Zimmer · Electric desert choral tones and visceral cinematic percussion from Dune: Part Two.",
+		PosterPath: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&q=80",
+		BackdropPath: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&q=80",
+		MediaType: "music", VoteAverage: 9.7, Genres: []string{"Soundtrack", "Ambient", "Orchestral"}, Quality: "Dolby Atmos",
+	},
+	{
+		ID: 1003, Title: "Can You Hear The Music (Oppenheimer)", Year: 2023,
+		Overview: "Ludwig Göransson · Complex polyrhythmic 24-tempo violin sequence capturing the quantum realm.",
+		PosterPath: "https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=600&q=80",
+		BackdropPath: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&q=80",
+		MediaType: "music", VoteAverage: 9.8, Genres: []string{"Soundtrack", "Modern Classical"}, Quality: "FLAC 24-bit",
+	},
+	{
+		ID: 1004, Title: "Starboy (feat. Daft Punk)", Year: 2016,
+		Overview: "The Weeknd, Daft Punk · Electropop R&B anthem with analog synth lines and punchy 808 bass.",
+		PosterPath: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&q=80",
+		BackdropPath: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200&q=80",
+		MediaType: "music", VoteAverage: 9.4, Genres: []string{"Synthpop", "R&B", "Electronic"}, Quality: "320 kbps",
+	},
+	{
+		ID: 1005, Title: "Midnight City", Year: 2011,
+		Overview: "M83 · Iconic synthwave anthem driven by shimmering vocal hooks and vintage saxophone solos.",
+		PosterPath: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80",
+		BackdropPath: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&q=80",
+		MediaType: "music", VoteAverage: 9.6, Genres: []string{"Synthwave", "Indie Electronic"}, Quality: "FLAC",
+	},
+	{
+		ID: 1006, Title: "Kun Faya Kun (Rockstar)", Year: 2011,
+		Overview: "A.R. Rahman, Mohit Chauhan, Javed Ali · Sufi spiritual masterpiece with acoustic strings and harmonium.",
+		PosterPath: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=600&q=80",
+		BackdropPath: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=1200&q=80",
+		MediaType: "music", VoteAverage: 9.9, Genres: []string{"Sufi", "Bollywood", "Acoustic"}, Quality: "Lossless",
+	},
+	{
+		ID: 1007, Title: "Lofi Hip Hop Beats (Relax / Study)", Year: 2024,
+		Overview: "ChilledCow / Lofi Girl · Warm vinyl crackle, mellow Fender Rhodes chords, and soothing downtempo beats.",
+		PosterPath: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&q=80",
+		BackdropPath: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&q=80",
+		MediaType: "music", VoteAverage: 9.5, Genres: []string{"Lofi", "Chillhop", "Instrumental"}, Quality: "320 kbps",
+	},
+	{
+		ID: 1008, Title: "Time (Inception Live at Prague)", Year: 2010,
+		Overview: "Hans Zimmer · Ascending orchestral crescendo exploring the boundaries of dreams and memory.",
+		PosterPath: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80",
+		BackdropPath: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&q=80",
+		MediaType: "music", VoteAverage: 9.9, Genres: []string{"Soundtrack", "Epic", "Cinematic"}, Quality: "FLAC 24-bit",
+	},
+}
 
+func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	resp := HomeResponse{
 		Spotlight:      masterSpotlight,
 		TrendingMovies: masterMovies,
 		TrendingTV:     masterSeries,
 		Anime:          masterAnime,
+		Music:          masterMusic,
 		TopRatedMovies: masterMovies,
 		TopRatedTV:     masterSeries,
 		ActionSciFi:    masterMovies,

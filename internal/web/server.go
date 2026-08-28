@@ -73,6 +73,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/downloads", s.handleDownloads)
 	mux.HandleFunc("/api/tiers", s.handleTiers)
 	mux.HandleFunc("/api/play", s.handlePlay)
+	mux.HandleFunc("/api/music/search", s.handleMusicSearch)
+	mux.HandleFunc("/api/music/trending", s.handleMusicTrending)
+	mux.HandleFunc("/api/music/stream", s.handleMusicStream)
+	mux.HandleFunc("/manifest.json", s.handleManifest)
+	mux.HandleFunc("/sw.js", s.handleServiceWorker)
+	mux.HandleFunc("/app-icon.svg", s.handleAppIcon)
 	mux.HandleFunc("/ws", s.handleWS)
 
 	return mux
@@ -405,4 +411,54 @@ func (s *Server) handleTrackersBoost(w http.ResponseWriter, r *http.Request) {
 		"trackers": engine.GetTrackersCount(),
 		"dht":      480,
 	})
+}
+
+func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/manifest+json")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Write([]byte(`{
+  "name": "ZenTorrent Cinema",
+  "short_name": "ZenTorrent",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060608",
+  "theme_color": "#060608",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}`))
+}
+
+func (s *Server) handleServiceWorker(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/javascript")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write([]byte(`const CACHE_NAME = 'zentorrent-v4';
+self.addEventListener('install', (e) => { self.skipWaiting(); });
+self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+});`))
+}
+
+func (s *Server) handleAppIcon(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="128" fill="#060608"/>
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+  <path d="M128 144 H384 L180 368 H384" stroke="url(#grad)" stroke-width="54" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <defs>
+    <linearGradient id="grad" x1="128" y1="144" x2="384" y2="368" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+</svg>`))
 }
