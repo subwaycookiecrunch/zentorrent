@@ -1,8 +1,6 @@
 # ZenTorrent v4
 
-Ultra-fast terminal torrent streamer evolved into a **hybrid multi-engine media
-ecosystem**: three playback tiers behind one unified search, with a Bubble Tea
-TUI *and* an embedded web player in a single Go binary.
+Terminal and web-based torrent streaming client with multi-source playback, watch party synchronization, and integrated audio controls.
 
 ## Streaming Tiers
 
