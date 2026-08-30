@@ -3190,11 +3190,18 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-function resolveImg(path, size='original', imdbId='') {
+function getFallbackPosterSVG(title) {
+  const safeTitle = (title || 'ZenTorrent').replace(/[<>&"']/g, '');
+  const letter = (safeTitle[0] || 'Z').toUpperCase();
+  const shortTitle = safeTitle.length > 20 ? safeTitle.substring(0, 18) + '..' : safeTitle;
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450" viewBox="0 0 300 450"><rect width="300" height="450" fill="%231a1c18"/><rect x="12" y="12" width="276" height="426" rx="10" fill="none" stroke="%232c2f27" stroke-width="2"/><circle cx="150" cy="180" r="46" fill="%23242720"/><text x="150" y="196" fill="%23d5a85b" font-family="sans-serif" font-size="40" font-weight="bold" text-anchor="middle">${letter}</text><text x="150" y="270" fill="%23f2f0e8" font-family="sans-serif" font-size="15" font-weight="600" text-anchor="middle">${encodeURIComponent(shortTitle)}</text><text x="150" y="296" fill="%23858a7e" font-family="sans-serif" font-size="11" font-weight="500" letter-spacing="1" text-anchor="middle">ZENTORRENT</text></svg>`;
+}
+
+function resolveImg(path, size='original', imdbId='', title='') {
   if (path && path.startsWith('http')) return path;
   if (path && path.startsWith('/')) return `https://image.tmdb.org/t/p/${size}${path}`;
-  if (imdbId) return `https://images.metahub.space/poster/medium/${imdbId}/img`;
-  return `https://images.metahub.space/poster/medium/tt0816692/img`;
+  if (imdbId && imdbId.startsWith('tt')) return `https://images.metahub.space/poster/medium/${imdbId}/img`;
+  return getFallbackPosterSVG(title);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -3302,16 +3309,17 @@ function renderRow(trackId, items) {
   const track = $(trackId);
   if (!track) return;
   track.innerHTML = items.map(it => {
-    const poster = resolveImg(it.poster_path || it.backdrop_path, 'w500', it.imdb_id);
+    const poster = resolveImg(it.poster_path || it.backdrop_path, 'w500', it.imdb_id, it.title);
     const rating = (it.vote_average || 8.0).toFixed(1);
     const isMusic = it.media_type === 'music';
     const typeLabel = isMusic ? 'Audio' : (it.media_type === 'tv' ? 'Series' : (it.media_type === 'anime' ? 'Anime' : 'Movie'));
     const clickHandler = isMusic ? `openZenAudioPlayer(${JSON.stringify(it).replace(/'/g, "&#39;")})` : `openDetails(${JSON.stringify(it).replace(/'/g, "&#39;")})`;
+    const escapedTitle = (it.title || '').replace(/'/g, "\\'");
 
     return `
       <div class="cinema-card" onclick='${clickHandler}'>
         <div class="card-poster-frame">
-          <img class="card-poster-img" src="${poster}" alt="${it.title}" loading="lazy" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src='https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';}">
+          <img class="card-poster-img" src="${poster}" alt="${it.title}" loading="lazy" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src=getFallbackPosterSVG('${escapedTitle}');}">
           <div class="card-corner-badges">
             <span class="badge-rating-pill">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -3476,14 +3484,15 @@ function applyFilters() {
   }
 
   grid.innerHTML = pool.map(it => {
-    const poster = resolveImg(it.poster_path || it.backdrop_path, 'w500', it.imdb_id);
+    const poster = resolveImg(it.poster_path || it.backdrop_path, 'w500', it.imdb_id, it.title);
     const rating = (it.vote_average || 8.0).toFixed(1);
     const typeLabel = it.media_type === 'tv' ? 'Series' : (it.media_type === 'anime' ? 'Anime' : 'Movie');
+    const escapedTitle = (it.title || '').replace(/'/g, "\\'");
 
     return `
       <div class="cinema-card" onclick='openDetails(${JSON.stringify(it).replace(/'/g, "&#39;")})'>
         <div class="card-poster-frame">
-          <img class="card-poster-img" src="${poster}" alt="${it.title}" loading="lazy" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src='https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80';}">
+          <img class="card-poster-img" src="${poster}" alt="${it.title}" loading="lazy" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src=getFallbackPosterSVG('${escapedTitle}');}">
           <div class="card-corner-badges">
             <span class="badge-rating-pill">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -3512,11 +3521,14 @@ function applyFilters() {
 // Media Details Modal
 async function openDetails(item) {
   activeDetailsItem = item;
-  const bg = resolveImg(item.backdrop_path, 'original', item.imdb_id);
-  const poster = resolveImg(item.poster_path || item.backdrop_path, 'w500', item.imdb_id);
+  const bg = resolveImg(item.backdrop_path, 'original', item.imdb_id, item.title);
+  const poster = resolveImg(item.poster_path || item.backdrop_path, 'w500', item.imdb_id, item.title);
 
   $('det-hero').style.backgroundImage = `url('${bg}')`;
   $('det-poster').src = poster;
+  $('det-poster').onerror = function() {
+    this.src = getFallbackPosterSVG(item.title);
+  };
   $('det-title').innerText = item.title;
   $('det-tagline').innerText = item.original_title ? `Original: ${item.original_title}` : 'Stream in 4K UHD with Dolby Atmos';
   $('det-rating').innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> ${(item.vote_average || 8.0).toFixed(1)} IMDb`;
@@ -3652,7 +3664,7 @@ function updateServerTabUI() {
 }
 
 function updatePlayerSource(item, season=1, episode=1) {
-  const target = item.imdb_id || item.id || 'tt0816692';
+  const target = item.imdb_id || item.id || (item.title ? encodeURIComponent(item.title) : 'tt15239678');
   let url = '';
 
   if (activeServer === 'zen_swarm') {
@@ -3786,10 +3798,11 @@ async function performSearch(q) {
       return;
     }
     box.innerHTML = items.map(it => {
-      const img = resolveImg(it.poster_path || it.backdrop_path, 'w92', it.imdb_id);
+      const img = resolveImg(it.poster_path || it.backdrop_path, 'w92', it.imdb_id, it.title);
+      const escapedTitle = (it.title || '').replace(/'/g, "\\'");
       return `
         <div class="search-row-item" onclick='closeSearch(); openDetails(${JSON.stringify(it).replace(/'/g, "&#39;")})'>
-          <img class="search-thumb-img" src="${img}" alt="${it.title}" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src='https://images.metahub.space/poster/medium/tt0816692/img';}">
+          <img class="search-thumb-img" src="${img}" alt="${it.title}" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src=getFallbackPosterSVG('${escapedTitle}');}">
           <div>
             <div class="search-title-text">${it.title}</div>
             <div class="search-meta-text">${it.year || ''} • ★ ${(it.vote_average || 8.0).toFixed(1)} • ${(it.media_type || 'movie').toUpperCase()}</div>
@@ -4016,7 +4029,7 @@ function renderPartyUI(room) {
   if (room.queue) {
     $('party-queue-list').innerHTML = room.queue.map(q => `
       <div class="party-queue-card">
-        <img class="party-queue-thumb" src="${q.poster_path || 'https://images.metahub.space/poster/medium/tt0816692/img'}" alt="">
+        <img class="party-queue-thumb" src="${q.poster_path || resolveImg('', 'w500', q.imdb_id, q.title)}" alt="${q.title}">
         <div style="flex: 1; min-width: 0;">
           <div style="font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;">${q.title}</div>
           <div style="font-size: 10.5px; color: var(--text-muted);">Added by ${q.added_by}</div>

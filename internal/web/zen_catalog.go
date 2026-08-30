@@ -662,6 +662,59 @@ func (s *Server) handleDetails(w http.ResponseWriter, r *http.Request) {
 	if matched != nil {
 		details.MediaCard = *matched
 		details.Tagline = "Stream in 4K UHD with Dolby Atmos & Multi-Audio"
+	} else if imdb != "" {
+		targetType := "movie"
+		if mType == "tv" || mType == "series" || mType == "anime" {
+			targetType = "series"
+		}
+		u := fmt.Sprintf("https://v3-cinemeta.strem.io/meta/%s/%s.json", targetType, url.PathEscape(imdb))
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, u, nil)
+		if err == nil {
+			if resp, err := sharedClient.Do(req); err == nil {
+				defer resp.Body.Close()
+				var metaPayload struct {
+					Meta struct {
+						ID          string   `json:"id"`
+						Name        string   `json:"name"`
+						Type        string   `json:"type"`
+						Poster      string   `json:"poster"`
+						Background  string   `json:"background"`
+						Year        any      `json:"year"`
+						ImdbRating  string   `json:"imdbRating"`
+						Genres      []string `json:"genres"`
+						Description string   `json:"description"`
+					} `json:"meta"`
+				}
+				if json.NewDecoder(resp.Body).Decode(&metaPayload) == nil && metaPayload.Meta.Name != "" {
+					year := 2024
+					switch v := metaPayload.Meta.Year.(type) {
+					case float64:
+						year = int(v)
+					case string:
+						if y, err := strconv.Atoi(strings.Split(v, "–")[0]); err == nil {
+							year = y
+						}
+					}
+					rating, _ := strconv.ParseFloat(metaPayload.Meta.ImdbRating, 64)
+					if rating <= 0 {
+						rating = 8.0
+					}
+					details.MediaCard = MediaCard{
+						IMDbID:       metaPayload.Meta.ID,
+						Title:        metaPayload.Meta.Name,
+						Year:         year,
+						MediaType:    mType,
+						VoteAverage:  rating,
+						Genres:       metaPayload.Meta.Genres,
+						Overview:     metaPayload.Meta.Description,
+						PosterPath:   metaPayload.Meta.Poster,
+						BackdropPath: metaPayload.Meta.Background,
+						Quality:      "4K UHD",
+					}
+					details.Tagline = "Stream in 4K UHD with Dolby Atmos & Multi-Audio"
+				}
+			}
+		}
 	}
 
 	// Discover and populate all seasons for TV Series & Anime
@@ -826,7 +879,7 @@ func generateStreamingLinks(idStr, imdb, mType string, season, episode int) map[
 		target = idStr
 	}
 	if target == "" {
-		target = "tt0816692" // Interstellar fallback
+		target = "tt15239678"
 	}
 
 	links := make(map[string]string)
