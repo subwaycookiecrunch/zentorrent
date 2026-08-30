@@ -2675,20 +2675,6 @@
     </div>
     <div class="carousel-scroll-track" id="track-anime"></div>
   </div>
-
-  <div class="content-section-block" id="sec-music">
-    <div class="section-headline-bar">
-      <div class="section-headline-title" id="title-music">
-        <span>Trending Music & Soundtracks</span>
-        <span class="section-badge-tag">LOSSLESS FLAC</span>
-      </div>
-      <div class="carousel-nav-arrows">
-        <button class="nav-arrow-btn" onclick="scrollTrack('track-music', -450)">‹</button>
-        <button class="nav-arrow-btn" onclick="scrollTrack('track-music', 450)">›</button>
-      </div>
-    </div>
-    <div class="carousel-scroll-track" id="track-music"></div>
-  </div>
 </main>
 
 <!-- Dedicated ZenPlayer Music Studio (Active when on Music tab) -->
@@ -3382,11 +3368,9 @@ function switchNav(type) {
     $('sec-trending-movies').style.display = 'block';
     $('sec-trending-tv').style.display = 'block';
     $('sec-anime').style.display = 'block';
-    if ($('sec-music')) $('sec-music').style.display = 'block';
     renderRow('track-movies', homeData.trending_movies || []);
     renderRow('track-tv', homeData.trending_tv || []);
     renderRow('track-anime', homeData.anime || []);
-    renderRow('track-music', homeData.music || []);
   } else {
     $('hero-sec').style.display = 'flex';
     $('discovery-filter-sec').style.display = 'block';
