@@ -601,6 +601,172 @@ func (s *Server) handleHome(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, resp)
 }
 
+func (s *Server) handleGenreCatalog(w http.ResponseWriter, r *http.Request) {
+	genre := strings.TrimSpace(r.URL.Query().Get("genre"))
+	mType := strings.TrimSpace(r.URL.Query().Get("type")) // "movie" | "tv" | "anime" | "all"
+	if mType == "" {
+		mType = "all"
+	}
+	if genre == "" {
+		genre = "all"
+	}
+
+	cacheKey := fmt.Sprintf("genre_catalog_%s_%s", mType, strings.ToLower(genre))
+	if data, ok := getWebCache(cacheKey); ok {
+		writeJSON(w, data)
+		return
+	}
+
+	var results []MediaCard
+	seen := make(map[string]bool)
+	var mu sync.Mutex
+
+	addItem := func(m MediaCard) {
+		mu.Lock()
+		defer mu.Unlock()
+		key := m.IMDbID
+		if key == "" {
+			key = strings.ToLower(m.Title)
+		}
+		if seen[key] || m.Title == "" {
+			return
+		}
+		seen[key] = true
+		results = append(results, m)
+	}
+
+	// 1. Add matching master items
+	var masterPool []MediaCard
+	if mType == "movie" {
+		masterPool = append(masterPool, masterMovies...)
+	} else if mType == "tv" {
+		masterPool = append(masterPool, masterSeries...)
+	} else if mType == "anime" {
+		masterPool = append(masterPool, masterAnime...)
+	} else {
+		masterPool = append(masterPool, masterSpotlight...)
+		masterPool = append(masterPool, masterMovies...)
+		masterPool = append(masterPool, masterSeries...)
+		masterPool = append(masterPool, masterAnime...)
+	}
+
+	lGenre := strings.ToLower(genre)
+	for _, it := range masterPool {
+		if lGenre == "all" {
+			addItem(it)
+		} else {
+			for _, g := range it.Genres {
+				if strings.Contains(strings.ToLower(g), lGenre) {
+					addItem(it)
+					break
+				}
+			}
+		}
+	}
+
+	// 2. Fetch extensive genre collection from Cinemeta
+	if lGenre != "all" {
+		var cinemetaEndpoints []string
+		if mType == "tv" || mType == "series" || mType == "anime" {
+			cinemetaEndpoints = []string{
+				fmt.Sprintf("https://v3-cinemeta.strem.io/catalog/series/top/genre=%s.json", url.PathEscape(genre)),
+			}
+		} else if mType == "movie" {
+			cinemetaEndpoints = []string{
+				fmt.Sprintf("https://v3-cinemeta.strem.io/catalog/movie/top/genre=%s.json", url.PathEscape(genre)),
+			}
+		} else {
+			cinemetaEndpoints = []string{
+				fmt.Sprintf("https://v3-cinemeta.strem.io/catalog/movie/top/genre=%s.json", url.PathEscape(genre)),
+				fmt.Sprintf("https://v3-cinemeta.strem.io/catalog/series/top/genre=%s.json", url.PathEscape(genre)),
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+
+		var wg sync.WaitGroup
+		for _, ep := range cinemetaEndpoints {
+			wg.Add(1)
+			go func(endpoint string) {
+				defer wg.Done()
+				req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+				if err != nil {
+					return
+				}
+				resp, err := sharedClient.Do(req)
+				if err != nil {
+					return
+				}
+				defer resp.Body.Close()
+
+				var payload struct {
+					Metas []struct {
+						ID          string   `json:"id"`
+						Type        string   `json:"type"`
+						Name        string   `json:"name"`
+						Poster      string   `json:"poster"`
+						Background  string   `json:"background"`
+						Year        any      `json:"year"`
+						ImdbRating  string   `json:"imdbRating"`
+						Genres      []string `json:"genres"`
+						Description string   `json:"description"`
+					} `json:"metas"`
+				}
+
+				if json.NewDecoder(resp.Body).Decode(&payload) == nil {
+					for _, it := range payload.Metas {
+						if it.Name == "" || it.ID == "" {
+							continue
+						}
+						year := 2024
+						switch v := it.Year.(type) {
+						case float64:
+							year = int(v)
+						case string:
+							if y, err := strconv.Atoi(strings.Split(v, "–")[0]); err == nil {
+								year = y
+							}
+						}
+						rating, _ := strconv.ParseFloat(it.ImdbRating, 64)
+						if rating <= 0 {
+							rating = 8.0
+						}
+						mTypeItem := it.Type
+						if mTypeItem == "series" {
+							mTypeItem = "tv"
+						}
+						poster := it.Poster
+						if poster == "" {
+							poster = fmt.Sprintf("https://images.metahub.space/poster/medium/%s/img", it.ID)
+						}
+						backdrop := it.Background
+						if backdrop == "" {
+							backdrop = fmt.Sprintf("https://images.metahub.space/background/medium/%s/img", it.ID)
+						}
+						addItem(MediaCard{
+							IMDbID:       it.ID,
+							Title:        it.Name,
+							Year:         year,
+							MediaType:    mTypeItem,
+							VoteAverage:  rating,
+							Genres:       it.Genres,
+							Overview:     it.Description,
+							PosterPath:   poster,
+							BackdropPath: backdrop,
+							Quality:      "4K UHD",
+						})
+					}
+				}
+			}(ep)
+		}
+		wg.Wait()
+	}
+
+	setWebCache(cacheKey, results, 30*time.Minute)
+	writeJSON(w, results)
+}
+
 func (s *Server) handleDetails(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimSpace(r.URL.Query().Get("id"))
 	imdb := strings.TrimSpace(r.URL.Query().Get("imdb"))

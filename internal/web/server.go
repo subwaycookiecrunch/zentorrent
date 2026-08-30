@@ -60,6 +60,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/api/home", s.handleHome)
 	mux.HandleFunc("/api/details", s.handleDetails)
+	mux.HandleFunc("/api/genre", s.handleGenreCatalog)
 	mux.HandleFunc("/api/tv-episodes", s.handleTVEpisodes)
 	mux.HandleFunc("/api/suggest", s.handleSuggest)
 	mux.HandleFunc("/api/search", s.handleSearch)
@@ -95,7 +96,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(body)
+	_, _ = w.Write(body)
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
@@ -125,17 +126,25 @@ func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
 
 	out := make([]card, 0)
 	seen := make(map[string]bool)
+	var mu sync.Mutex
 	lq := strings.ToLower(q)
 
-	// 1. Check in curated master collections first
-	addMaster := func(m MediaCard) {
-		key := strings.ToLower(m.Title)
-		if seen[key] {
+	addCard := func(c card) {
+		mu.Lock()
+		defer mu.Unlock()
+		key := strings.ToLower(c.Title)
+		if seen[key] || c.Title == "" {
 			return
 		}
+		seen[key] = true
+		out = append(out, c)
+	}
+
+	// 1. Check in curated master collections first
+	for _, m := range append(append(append(masterSpotlight, masterMovies...), masterSeries...), masterAnime...) {
+		key := strings.ToLower(m.Title)
 		if strings.Contains(key, lq) || (m.IMDbID != "" && strings.Contains(strings.ToLower(m.IMDbID), lq)) {
-			seen[key] = true
-			out = append(out, card{
+			addCard(card{
 				ID:           m.ID,
 				IMDbID:       m.IMDbID,
 				Title:        m.Title,
@@ -150,33 +159,16 @@ func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	for _, m := range masterSpotlight {
-		addMaster(m)
-	}
-	for _, m := range masterMovies {
-		addMaster(m)
-	}
-	for _, m := range masterSeries {
-		addMaster(m)
-	}
-	for _, m := range masterAnime {
-		addMaster(m)
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-
 	// 2. Query Cinemeta search API for instant rich posters and real IMDb metadata
 	cinemetaEndpoints := []string{
 		fmt.Sprintf("https://v3-cinemeta.strem.io/catalog/movie/top/search=%s.json", url.PathEscape(q)),
 		fmt.Sprintf("https://v3-cinemeta.strem.io/catalog/series/top/search=%s.json", url.PathEscape(q)),
 	}
 
-	var (
-		wg   sync.WaitGroup
-		cmMu sync.Mutex
-	)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
 
+	var wg sync.WaitGroup
 	for _, ep := range cinemetaEndpoints {
 		wg.Add(1)
 		go func(endpoint string) {
@@ -205,15 +197,10 @@ func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
 				} `json:"metas"`
 			}
 			if json.NewDecoder(resp.Body).Decode(&payload) == nil {
-				cmMu.Lock()
-				defer cmMu.Unlock()
 				for _, it := range payload.Metas {
-					key := strings.ToLower(it.Name)
-					if seen[key] || it.Name == "" {
+					if it.Name == "" || it.ID == "" {
 						continue
 					}
-					seen[key] = true
-
 					year := 2024
 					switch v := it.Year.(type) {
 					case float64:
@@ -235,11 +222,11 @@ func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
 					}
 
 					poster := it.Poster
-					if poster == "" && it.ID != "" {
+					if poster == "" {
 						poster = fmt.Sprintf("https://images.metahub.space/poster/medium/%s/img", it.ID)
 					}
 
-					out = append(out, card{
+					addCard(card{
 						IMDbID:       it.ID,
 						Title:        it.Name,
 						Year:         year,
@@ -255,20 +242,17 @@ func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
 		}(ep)
 	}
 
-	// 3. Query local discovery suggestions if needed
+	wg.Wait()
+
+	// 3. Query local discovery suggestions if available
 	if s.Discovery != nil {
 		if items, err := s.Discovery.Suggest(ctx, q, 10); err == nil {
 			for _, it := range items {
-				key := strings.ToLower(it.Title)
-				if seen[key] {
-					continue
-				}
-				seen[key] = true
 				poster := it.PosterPath
 				if poster == "" && it.IMDbID != "" {
 					poster = fmt.Sprintf("https://images.metahub.space/poster/medium/%s/img", it.IMDbID)
 				}
-				out = append(out, card{
+				addCard(card{
 					ID:           it.TMDBID,
 					IMDbID:       it.IMDbID,
 					Title:        it.Title,
@@ -283,8 +267,6 @@ func (s *Server) handleSuggest(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
-	wg.Wait()
 
 	if len(out) > 20 {
 		out = out[:20]

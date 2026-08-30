@@ -3179,8 +3179,9 @@ function showToast(msg) {
 function getFallbackPosterSVG(title) {
   const safeTitle = (title || 'ZenTorrent').replace(/[<>&"']/g, '');
   const letter = (safeTitle[0] || 'Z').toUpperCase();
-  const shortTitle = safeTitle.length > 20 ? safeTitle.substring(0, 18) + '..' : safeTitle;
-  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450" viewBox="0 0 300 450"><rect width="300" height="450" fill="%231a1c18"/><rect x="12" y="12" width="276" height="426" rx="10" fill="none" stroke="%232c2f27" stroke-width="2"/><circle cx="150" cy="180" r="46" fill="%23242720"/><text x="150" y="196" fill="%23d5a85b" font-family="sans-serif" font-size="40" font-weight="bold" text-anchor="middle">${letter}</text><text x="150" y="270" fill="%23f2f0e8" font-family="sans-serif" font-size="15" font-weight="600" text-anchor="middle">${encodeURIComponent(shortTitle)}</text><text x="150" y="296" fill="%23858a7e" font-family="sans-serif" font-size="11" font-weight="500" letter-spacing="1" text-anchor="middle">ZENTORRENT</text></svg>`;
+  const shortTitle = safeTitle.length > 18 ? safeTitle.substring(0, 16) + '..' : safeTitle;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><rect width='300' height='450' fill='#1a1c18'/><rect x='12' y='12' width='276' height='426' rx='10' fill='none' stroke='#2c2f27' stroke-width='2'/><circle cx='150' cy='180' r='46' fill='#242720'/><text x='150' y='196' fill='#d5a85b' font-family='sans-serif' font-size='40' font-weight='bold' text-anchor='middle'>${letter}</text><text x='150' y='270' fill='#f2f0e8' font-family='sans-serif' font-size='15' font-weight='600' text-anchor='middle'>${shortTitle}</text><text x='150' y='296' fill='#858a7e' font-family='sans-serif' font-size='11' font-weight='500' letter-spacing='1' text-anchor='middle'>ZENTORRENT</text></svg>`;
+  return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
 }
 
 function resolveImg(path, size='original', imdbId='', title='') {
@@ -3232,12 +3233,16 @@ window.addEventListener('DOMContentLoaded', () => {
     clearTimeout(searchTimer);
     const q = e.target.value.trim();
     if (!q) {
-      $('search-results-box').innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 32px 0;">Type title to search...</div>';
+      $('search-results-box').innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 32px 0;">Type a title or topic to search...</div>';
       return;
     }
-    searchTimer = setTimeout(() => performSearch(q), 300);
+    searchTimer = setTimeout(() => executeSearch(q), 200);
   });
 });
+
+function performSearch(q) {
+  executeSearch(q);
+}
 
 async function loadHomeFeed() {
   try {
@@ -3410,96 +3415,101 @@ function resetFilters() {
   applyFilters();
 }
 
-function applyFilters() {
-  let pool = [];
-  if (currentNavTab === 'movies') pool = [...(homeData.trending_movies || [])];
-  else if (currentNavTab === 'tv') pool = [...(homeData.trending_tv || [])];
-  else if (currentNavTab === 'anime') pool = [...(homeData.anime || [])];
-  else if (currentNavTab === 'music') pool = [...(homeData.music || [])];
-  else pool = [...(homeData.trending_movies || []), ...(homeData.trending_tv || []), ...(homeData.anime || []), ...(homeData.music || [])];
-
-  const seen = new Set();
-  pool = pool.filter(item => {
-    const key = item.imdb_id || item.id || item.title;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  if (activeGenreFilter !== 'all') {
-    pool = pool.filter(it => it.genres && it.genres.some(g => g.toLowerCase().includes(activeGenreFilter.toLowerCase())));
-  }
-
-  const yearVal = $('filter-year').value;
-  if (yearVal === '2024') pool = pool.filter(it => it.year === 2024);
-  else if (yearVal === '2023') pool = pool.filter(it => it.year === 2023);
-  else if (yearVal === '2022') pool = pool.filter(it => it.year === 2022);
-  else if (yearVal === '2020s') pool = pool.filter(it => it.year >= 2020);
-  else if (yearVal === '2010s') pool = pool.filter(it => it.year >= 2010 && it.year < 2020);
-  else if (yearVal === 'classics') pool = pool.filter(it => it.year < 2010);
-
-  const sortVal = $('filter-sort-by').value;
-  if (sortVal === 'rating') {
-    pool.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
-  } else if (sortVal === 'year_desc') {
-    pool.sort((a, b) => (b.year || 0) - (a.year || 0));
-  } else if (sortVal === 'title_asc') {
-    pool.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-  }
-
+async function applyFilters() {
   $('sec-trending-movies').style.display = 'none';
   $('sec-trending-tv').style.display = 'none';
   $('sec-anime').style.display = 'none';
   $('sec-filtered-grid').style.display = 'block';
 
-  $('filter-results-count').innerText = `Showing ${pool.length} title${pool.length === 1 ? '' : 's'}`;
-
   const grid = $('grid-filtered-cards');
-  if (pool.length === 0) {
-    grid.innerHTML = `
-      <div style="grid-column: 1 / -1; padding: 48px; text-align: center; color: var(--text-muted);">
-        <div style="font-size: 32px; margin-bottom: 8px;">🎬</div>
-        <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px;">No titles matching filters</div>
-        <div>Try selecting a different genre or release decade.</div>
-        <button class="btn-solid-primary" style="margin: 16px auto 0;" onclick="resetFilters()">Reset Filters</button>
-      </div>
-    `;
-    return;
-  }
+  grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 48px; text-align: center; color: var(--text-muted);"><div style="font-size: 24px; margin-bottom: 8px;">⏳</div>Loading collection...</div>';
 
-  grid.innerHTML = pool.map(it => {
-    const poster = resolveImg(it.poster_path || it.backdrop_path, 'w500', it.imdb_id, it.title);
-    const rating = (it.vote_average || 8.0).toFixed(1);
-    const typeLabel = it.media_type === 'tv' ? 'Series' : (it.media_type === 'anime' ? 'Anime' : 'Movie');
-    const escapedTitle = (it.title || '').replace(/'/g, "\\'");
+  try {
+    const res = await fetch(`/api/genre?type=${encodeURIComponent(currentNavTab)}&genre=${encodeURIComponent(activeGenreFilter)}`);
+    let pool = await res.json();
+    if (!pool || !pool.length) {
+      if (currentNavTab === 'movies') pool = [...(homeData.trending_movies || [])];
+      else if (currentNavTab === 'tv') pool = [...(homeData.trending_tv || [])];
+      else if (currentNavTab === 'anime') pool = [...(homeData.anime || [])];
+      else pool = [...(homeData.trending_movies || []), ...(homeData.trending_tv || []), ...(homeData.anime || [])];
+    }
 
-    return `
-      <div class="cinema-card" onclick='openDetails(${JSON.stringify(it).replace(/'/g, "&#39;")})'>
-        <div class="card-poster-frame">
-          <img class="card-poster-img" src="${poster}" alt="${it.title}" loading="lazy" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src=getFallbackPosterSVG('${escapedTitle}');}">
-          <div class="card-corner-badges">
-            <span class="badge-rating-pill">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              ${rating}
-            </span>
-            <span class="badge-res-pill">${it.quality || '4K'}</span>
+    const seen = new Set();
+    pool = pool.filter(item => {
+      const key = item.imdb_id || item.id || item.title;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const yearVal = $('filter-year').value;
+    if (yearVal === '2024') pool = pool.filter(it => it.year === 2024);
+    else if (yearVal === '2023') pool = pool.filter(it => it.year === 2023);
+    else if (yearVal === '2022') pool = pool.filter(it => it.year === 2022);
+    else if (yearVal === '2020s') pool = pool.filter(it => it.year >= 2020);
+    else if (yearVal === '2010s') pool = pool.filter(it => it.year >= 2010 && it.year < 2020);
+    else if (yearVal === 'classics') pool = pool.filter(it => it.year < 2010);
+
+    const sortVal = $('filter-sort-by').value;
+    if (sortVal === 'rating') {
+      pool.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+    } else if (sortVal === 'year_desc') {
+      pool.sort((a, b) => (b.year || 0) - (a.year || 0));
+    } else if (sortVal === 'title_asc') {
+      pool.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    }
+
+    $('filter-results-count').innerText = `Showing ${pool.length} title${pool.length === 1 ? '' : 's'}`;
+
+    if (pool.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 48px; text-align: center; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 8px;">🎬</div>
+          <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px;">No titles matching filters</div>
+          <div>Try selecting a different genre or release decade.</div>
+          <button class="btn-solid-primary" style="margin: 16px auto 0;" onclick="resetFilters()">Reset Filters</button>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = pool.map(it => {
+      const poster = resolveImg(it.poster_path || it.backdrop_path, 'w500', it.imdb_id, it.title);
+      const rating = (it.vote_average || 8.0).toFixed(1);
+      const typeLabel = it.media_type === 'tv' ? 'Series' : (it.media_type === 'anime' ? 'Anime' : 'Movie');
+      const escapedTitle = (it.title || '').replace(/'/g, "\\'");
+      const safeImdb = (it.imdb_id && it.imdb_id.startsWith('tt')) ? it.imdb_id : '';
+
+      return `
+        <div class="cinema-card" onclick='openDetails(${JSON.stringify(it).replace(/'/g, "&#39;")})'>
+          <div class="card-poster-frame">
+            <img class="card-poster-img" src="${poster}" alt="${it.title}" loading="lazy" onerror="if(!this.dataset.retry && '${safeImdb}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${safeImdb}/img';}else{this.src=getFallbackPosterSVG('${escapedTitle}');}">
+            <div class="card-corner-badges">
+              <span class="badge-rating-pill">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                ${rating}
+              </span>
+              <span class="badge-res-pill">${it.quality || '4K'}</span>
+            </div>
+            <div class="card-hover-overlay">
+              <div class="play-glass-disc">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+              </div>
+            </div>
           </div>
-          <div class="card-hover-overlay">
-            <div class="play-glass-disc">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+          <div class="card-caption-block">
+            <div class="card-headline-title">${it.title}</div>
+            <div class="card-subtitle-meta">
+              <span>${it.year || 2024}</span>
+              <span>${typeLabel}</span>
             </div>
           </div>
         </div>
-        <div class="card-caption-block">
-          <div class="card-headline-title">${it.title}</div>
-          <div class="card-subtitle-meta">
-            <span>${it.year || 2024}</span>
-            <span>${typeLabel}</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('');
+  } catch (err) {
+    grid.innerHTML = '<div style="grid-column: 1 / -1; padding: 48px; text-align: center; color: var(--text-muted);">Failed to load collection.</div>';
+  }
 }
 
 // Media Details Modal
@@ -3586,7 +3596,7 @@ async function loadSeasonEpisodes() {
     currentSeasonEpisodes = eps;
     grid.innerHTML = eps.map(ep => `
       <div class="tv-ep-card" onclick='openPlayer(${JSON.stringify(activeDetailsItem).replace(/'/g, "&#39;")}, ${ep.season_number || season}, ${ep.episode_number})'>
-        <img class="tv-ep-still" src="${resolveImg(ep.still_path, 'w500')}" alt="" onerror="this.src='https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80'">
+        <img class="tv-ep-still" src="${resolveImg(ep.still_path, 'w500', '', ep.name)}" alt="" onerror="this.src=getFallbackPosterSVG('${(ep.name || '').replace(/'/g, "\\'")}')">
         <div class="tv-ep-info">
           <div class="tv-ep-num">Episode ${ep.episode_number}</div>
           <div class="tv-ep-title">${ep.name}</div>
@@ -3697,51 +3707,61 @@ function saveContinueWatching(item, season=1, episode=1) {
 
 function renderContinueWatching() {
   const list = JSON.parse(localStorage.getItem('zentorrent_history') || '[]');
-  const sec = $('sec-continue');
   const track = $('track-continue');
+  const sec = $('sec-continue');
   if (!list.length) {
     sec.style.display = 'none';
     return;
   }
   sec.style.display = 'block';
   track.innerHTML = list.map(it => {
-    const bg = resolveImg(it.backdrop_path || it.poster_path, 'w500', it.imdb_id);
-    const label = it.media_type === 'tv' ? `${it.title} S${it.saved_season || 1} · E${it.saved_episode || 1}` : it.title;
+    const poster = resolveImg(it.backdrop_path || it.poster_path, 'w500', it.imdb_id, it.title);
     return `
-      <div class="continue-card" onclick='openPlayer(${JSON.stringify(it).replace(/'/g, "&#39;")}, ${it.saved_season||1}, ${it.saved_episode||1})'>
-        <div class="continue-thumb-img" style="background-image: url('${bg}')">
-          <div class="continue-bar-rail">
-            <div class="continue-bar-progress" style="width: ${it.progress_pct || 45}%;"></div>
+      <div class="continue-card" onclick='openPlayer(${JSON.stringify(it).replace(/'/g, "&#39;")}, ${it.saved_season || 1}, ${it.saved_episode || 1})'>
+        <div class="continue-poster-box">
+          <img class="continue-poster-img" src="${poster}" alt="" onerror="this.src=getFallbackPosterSVG('${(it.title || '').replace(/'/g, "\\'")}')">
+          <div class="continue-progress-bar">
+            <div class="continue-progress-fill" style="width: ${it.progress_pct || 45}%"></div>
           </div>
         </div>
-        <div style="padding: 10px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-          ${label}
-        </div>
+        <div style="font-weight: 700; font-size: 13px; margin-bottom: 2px; color: #fff;">${it.title}</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Season ${it.saved_season || 1} • Episode ${it.saved_episode || 1}</div>
       </div>
     `;
   }).join('');
 }
 
 // search
-function setSearchMode(mode) {
-  searchMode = mode;
-  $('tab-search-cinema').classList.toggle('active', mode === 'cinema');
-  $('tab-search-torrents').classList.toggle('active', mode === 'torrents');
-  const q = $('search-input').value.trim();
-  if (q) performSearch(q);
-}
+let searchMode = 'library';
 
 function openSearch() {
   $('search-modal').classList.add('open');
   $('search-input').focus();
 }
-
 function closeSearch() {
   $('search-modal').classList.remove('open');
 }
 
-async function performSearch(q) {
+function setSearchMode(mode) {
+  searchMode = mode;
+  $('tab-search-lib').classList.toggle('active', mode === 'library');
+  $('tab-search-torrents').classList.toggle('active', mode === 'torrents');
+  const q = $('search-input').value.trim();
+  if (q) handleSearchInput(q);
+}
+
+let searchDebounce = null;
+function handleSearchInput(q) {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => executeSearch(q), 220);
+}
+
+async function executeSearch(q) {
   const box = $('search-results-box');
+  if (!q) {
+    box.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 28px 0; font-size: 13px;">Type a title or topic to search...</div>';
+    return;
+  }
 
   if (searchMode === 'torrents') {
     box.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 28px 0; font-size: 13px;">Scraping 1337x, YTS, TorrentGalaxy & Nyaa swarms...</div>';
@@ -3784,9 +3804,10 @@ async function performSearch(q) {
     box.innerHTML = items.map(it => {
       const img = resolveImg(it.poster_path || it.backdrop_path, 'w92', it.imdb_id, it.title);
       const escapedTitle = (it.title || '').replace(/'/g, "\\'");
+      const safeImdb = (it.imdb_id && it.imdb_id.startsWith('tt')) ? it.imdb_id : '';
       return `
         <div class="search-row-item" onclick='closeSearch(); openDetails(${JSON.stringify(it).replace(/'/g, "&#39;")})'>
-          <img class="search-thumb-img" src="${img}" alt="${it.title}" onerror="if(!this.dataset.retry && '${it.imdb_id}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${it.imdb_id}/img';}else{this.src=getFallbackPosterSVG('${escapedTitle}');}">
+          <img class="search-thumb-img" src="${img}" alt="" onerror="if(!this.dataset.retry && '${safeImdb}'){this.dataset.retry='1';this.src='https://images.metahub.space/poster/medium/${safeImdb}/img';}else{this.src=getFallbackPosterSVG('${escapedTitle}');}">
           <div>
             <div class="search-title-text">${it.title}</div>
             <div class="search-meta-text">${it.year || ''} • ★ ${(it.vote_average || 8.0).toFixed(1)} • ${(it.media_type || 'movie').toUpperCase()}</div>
