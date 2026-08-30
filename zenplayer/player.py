@@ -22,28 +22,35 @@ class ZenPlayerBackend:
                 pass
 
     def start(self):
+        env = os.environ.copy()
+        venv_bin = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'venv', 'bin')
+        if os.path.exists(venv_bin):
+            env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
+
         cmd = [
             'mpv',
             '--idle',
             '--no-video',
-            '--ytdl-format=bestaudio',
+            '--ytdl-format=bestaudio/best',
             f'--input-ipc-server={self.socket_path}',
             '--msg-level=all=no'
         ]
-        self.process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(0.5)
+        self.process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+        time.sleep(0.3)
         
         self._listener_thread = threading.Thread(target=self._listen, daemon=True)
         self._listener_thread.start()
         
-    def _send_command(self, cmd):
-        try:
-            client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            client.connect(self.socket_path)
-            client.sendall((json.dumps({"command": cmd}) + "\n").encode('utf-8'))
-            client.close()
-        except Exception:
-            pass
+    def _send_command(self, cmd, retries=5):
+        for _ in range(retries):
+            try:
+                client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                client.connect(self.socket_path)
+                client.sendall((json.dumps({"command": cmd}) + "\n").encode('utf-8'))
+                client.close()
+                return
+            except Exception:
+                time.sleep(0.1)
 
     def play_url(self, url):
         self._send_command(["loadfile", url])
@@ -79,13 +86,22 @@ class ZenPlayerBackend:
         if os.path.exists(self.socket_path):
             try:
                 os.remove(self.socket_path)
-            except Exception:
+            except OSError:
                 pass
 
     def _listen(self):
+        client = None
+        for _ in range(25):
+            try:
+                client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                client.connect(self.socket_path)
+                break
+            except Exception:
+                time.sleep(0.1)
+        if not client:
+            return
+
         try:
-            client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            client.connect(self.socket_path)
             client.sendall((json.dumps({"command": ["observe_property", 1, "time-pos"]}) + "\n").encode('utf-8'))
             client.sendall((json.dumps({"command": ["observe_property", 2, "duration"]}) + "\n").encode('utf-8'))
             

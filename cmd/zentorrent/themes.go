@@ -22,7 +22,49 @@ type Theme struct {
 	Bg        lipgloss.Color
 }
 
+var (
+	colorPurple    = lipgloss.Color("#ff7700")
+	colorOrange    = lipgloss.Color("#ff7700")
+	colorCyan      = lipgloss.Color("#ffeedd")
+	colorGreen     = lipgloss.Color("#d4e17e")
+	colorAmber     = lipgloss.Color("#ffba42")
+	colorRed       = lipgloss.Color("#d67040")
+	colorTextPri   = lipgloss.Color("#ffffff")
+	colorTextSec   = lipgloss.Color("#d4d4d8")
+	colorTextDim   = lipgloss.Color("#71717a")
+	colorBorder    = lipgloss.Color("#3f3f46")
+	colorBorderLit = lipgloss.Color("#ff8800")
+	colorBg        = lipgloss.Color("#060504")
+
+	footerStyle   = lipgloss.NewStyle().Foreground(colorTextDim).Italic(true)
+	pillIdleStyle = lipgloss.NewStyle().Foreground(colorCyan)
+
+	menuTitleStyle        = lipgloss.NewStyle().Foreground(colorPurple).Bold(true)
+	menuSubtitleStyle     = lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
+	menuVersionStyle      = lipgloss.NewStyle().Foreground(colorTextDim).Italic(true)
+	menuItemStyle         = lipgloss.NewStyle().Foreground(colorTextSec)
+	menuSelectedStyle     = lipgloss.NewStyle().Foreground(colorTextPri).Bold(true)
+	menuDescStyle         = lipgloss.NewStyle().Foreground(colorTextDim).Italic(true)
+	menuSelectedDescStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#e4d2a8")).Italic(true)
+	menuCursorStyle       = lipgloss.NewStyle().Foreground(colorPurple).Bold(true)
+	menuBoxStyle          = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(colorBorder).Padding(0, 2)
+)
+
 var themes = map[string]Theme{
+	"amber": {
+		Name:      "amber",
+		Accent:    "#ff7700",
+		Secondary: "#d5a85b",
+		Success:   "#d4e17e",
+		Warning:   "#ffba42",
+		Error:     "#d67040",
+		TextPri:   "#ffeec2",
+		TextSec:   "#c7a26b",
+		TextDim:   "#8a5a29",
+		Border:    "#b85d19",
+		BorderLit: "#ff8800",
+		Bg:        "#060504",
+	},
 	"purple": {
 		Name:      "purple",
 		Accent:    "#7c3aed",

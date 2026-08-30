@@ -19,15 +19,15 @@ const subtitle = "  T O R R E N T"
 
 func PrintBanner() {
 	gradientStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#7c3aed")).
+		Foreground(lipgloss.Color("#ff7700")).
 		Bold(true)
 
 	subtitleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#06b6d4")).
+		Foreground(lipgloss.Color("#ffeedd")).
 		Bold(true)
 
 	versionStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#525252")).
+		Foreground(lipgloss.Color("#71717a")).
 		Italic(true)
 
 	borderStyle := lipgloss.NewStyle().
@@ -45,14 +45,14 @@ func PrintBanner() {
 
 func PrintUsage() {
 	cmdStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#7c3aed")).
+		Foreground(lipgloss.Color("#ff7700")).
 		Bold(true)
 
 	descStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#a1a1aa"))
 
 	headerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#06b6d4")).
+		Foreground(lipgloss.Color("#ffeedd")).
 		Bold(true).
 		PaddingBottom(1)
 

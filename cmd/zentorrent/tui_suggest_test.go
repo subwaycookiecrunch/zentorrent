@@ -102,6 +102,18 @@ func TestMenuSearchTypeAhead(t *testing.T) {
 	}
 }
 
+func TestMenuViewVisualOutput(t *testing.T) {
+	m := newMenuModel()
+	m.width = 160
+	m.height = 48
+	m.frame = 10
+	view := m.View()
+	t.Logf("\n%s\n", view)
+	if view == "" {
+		t.Fatal("expected non-empty menu view")
+	}
+}
+
 func TestMenuTypingDismissesPills(t *testing.T) {
 	fake := &fakeSuggester{items: []metadata.Suggestion{{Title: "X", Year: 2000}}}
 	m := newMenuModel()

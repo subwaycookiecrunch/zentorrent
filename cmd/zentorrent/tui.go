@@ -40,7 +40,14 @@ type (
 		value string
 		items []metadata.Suggestion
 	}
+	animTickMsg time.Time
 )
+
+func animTickCmd() tea.Cmd {
+	return tea.Tick(50*time.Millisecond, func(t time.Time) tea.Msg {
+		return animTickMsg(t)
+	})
+}
 
 type menuAction int
 
@@ -60,88 +67,32 @@ const (
 )
 
 type menuItem struct {
-	icon   string
-	label  string
-	desc   string
-	action menuAction
+	icon      string
+	label     string
+	desc      string
+	action    menuAction
+	iconColor lipgloss.TerminalColor
+	textColor lipgloss.TerminalColor
+	descColor lipgloss.TerminalColor
 }
 
 var menuItems = []menuItem{
-	{"🔍", "Search", "Find movies, TV shows, anime", actionSearch},
-	{"⚡", "Stream", "Paste magnet/torrent to stream", actionStream},
-	{"⬇️", "Download", "Download torrent/magnet to disk", actionDownload},
-	{"📻", "ZenPlayer", "Retro cassette music player & YouTube streaming", actionZenPlayer},
-	{"📌", "Bookmarks", "View saved watchlist", actionBookmarks},
-	{"📜", "History", "Continue watching recent streams", actionHistory},
-	{"🍿", "ZenParty", "Host or join a watch-together session", actionParty},
-	{"🌐", "Watch Online", "Launch private cinema tunnel & browser", actionWeb},
-	{"⚙", "Config", "View & edit current settings", actionSettings},
-	{"✕", "Quit", "Exit ZenTorrent", actionQuit},
+	{icon: "🔍", label: "Search", desc: "Find movies, TV shows, anime", action: actionSearch},
+	{icon: "⚡", label: "Stream", desc: "Paste magnet/torrent to stream", action: actionStream},
+	{icon: "⬇️", label: "Download", desc: "Download torrent/magnet to disk", action: actionDownload},
+	{icon: "📻", label: "ZenPlayer", desc: "Retro cassette music player & YouTube streaming", action: actionZenPlayer},
+	{icon: "📌", label: "Bookmarks", desc: "View saved watchlist", action: actionBookmarks},
+	{icon: "📜", label: "History", desc: "Continue watching recent streams", action: actionHistory},
+	{icon: "🍿", label: "ZenParty", desc: "Host or join a watch-together session", action: actionParty},
+	{icon: "🌐", label: "Watch Online", desc: "Launch private cinema tunnel & browser", action: actionWeb},
+	{icon: "⚙", label: "Config", desc: "View & edit current settings", action: actionSettings},
+	{icon: "✕", label: "Quit", desc: "Exit ZenTorrent", action: actionQuit},
 }
 
 var (
-	colorPurple    = lipgloss.Color("#7c3aed")
-	colorCyan      = lipgloss.Color("#06b6d4")
-	colorGreen     = lipgloss.Color("#10b981")
-	colorAmber     = lipgloss.Color("#f59e0b")
-	colorRed       = lipgloss.Color("#ef4444")
-	colorTextPri   = lipgloss.Color("#e4e4e7")
-	colorTextSec   = lipgloss.Color("#a1a1aa")
-	colorTextDim   = lipgloss.Color("#71717a")
-	colorBorder    = lipgloss.Color("#3f3f46")
-	colorBorderLit = lipgloss.Color("#52525b")
-	colorBg        = lipgloss.Color("#18181b")
-
-	menuTitleStyle = lipgloss.NewStyle().
-			Foreground(colorPurple).
-			Bold(true)
-
-	menuSubtitleStyle = lipgloss.NewStyle().
-				Foreground(colorCyan).
-				Bold(true)
-
-	menuVersionStyle = lipgloss.NewStyle().
-				Foreground(colorTextDim).
-				Italic(true)
-
-	menuItemStyle = lipgloss.NewStyle().
-			Foreground(colorTextSec).
-			PaddingLeft(4)
-
-	menuSelectedStyle = lipgloss.NewStyle().
-				Foreground(colorTextPri).
-				Bold(true).
-				PaddingLeft(2)
-
-	menuDescStyle = lipgloss.NewStyle().
-			Foreground(colorTextDim).
-			Italic(true)
-
-	menuSelectedDescStyle = lipgloss.NewStyle().
-				Foreground(colorTextSec).
-				Italic(true)
-
-	menuCursorStyle = lipgloss.NewStyle().
-			Foreground(colorPurple).
-			Bold(true)
-
-	menuBoxStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.RoundedBorder()).
-			BorderForeground(colorBorder).
-			Padding(0, 3)
-
 	inputLabelStyle = lipgloss.NewStyle().
-			Foreground(colorCyan).
+			Foreground(colorOrange).
 			Bold(true)
-
-	footerStyle = lipgloss.NewStyle().
-			Foreground(colorTextDim)
-
-	pillIdleStyle = lipgloss.NewStyle().
-			Foreground(colorCyan)
-
-	// Foreground for rows rendered on top of the accent color; recomputed by
-	// ApplyTheme since light accents need dark text.
 	selectedRowFg = lipgloss.Color("#ffffff")
 )
 
@@ -153,15 +104,17 @@ type menuModel struct {
 	textInput textinput.Model
 	query     string
 	uri       string
-	width     int // terminal width; 0 until first WindowSizeMsg
+	width     int
+	height    int
+	frame     int // Animation frame tick counter
 
-	// Netflix-style type-ahead state (search input only).
+	// Type-ahead state
 	suggester suggestionSource
 	sugg      []metadata.Suggestion
-	sugSel    int    // -1 = free text
-	sugSeq    int    // debounce generation counter
-	typed     string // what the user typed before pill navigation
-	suppress  bool   // true while we programmatically fill the input
+	sugSel    int
+	sugSeq    int
+	typed     string
+	suppress  bool
 }
 
 func newMenuModel() menuModel {
@@ -181,10 +134,10 @@ func newMenuModel() menuModel {
 		textInput: ti,
 		sugSel:    -1,
 		suggester: sugg,
+		frame:     0,
 	}
 }
 
-// pillLabel renders one suggestion the way Netflix would.
 func pillLabel(s metadata.Suggestion) string {
 	if s.Year > 0 {
 		return fmt.Sprintf("%s (%d)", s.Title, s.Year)
@@ -192,9 +145,6 @@ func pillLabel(s metadata.Suggestion) string {
 	return s.Title
 }
 
-// menuKickSuggest debounces a catalog lookup for the current input text.
-// suggestMatch drops stale suggestion traffic (older debounce generation or
-// an input that has since changed).
 func (m *menuModel) suggestMatch(seq int, value string) bool {
 	return m.suggester != nil && seq == m.sugSeq &&
 		m.inputMode == "search" && m.textInput.Value() == value
@@ -223,15 +173,11 @@ func (m *menuModel) menuKickSuggest() tea.Cmd {
 	}
 	m.sugSeq++
 	seq, value := m.sugSeq, m.textInput.Value()
-	// Single debounced lookup: the tick carries the snapshot of the input so
-	// stale generations are dropped by suggestMatch.
 	return tea.Tick(suggestDebounce, func(time.Time) tea.Msg {
 		return menuSuggestValue{seq: seq, value: value}
 	})
 }
 
-// inputWidth keeps the text input inside the box on narrow terminals:
-// label (~13 cells) + box chrome (6) must fit alongside it.
 func (m *menuModel) inputWidth() int {
 	max := 50
 	if m.width > 0 && m.width-20 < max {
@@ -290,13 +236,18 @@ func StartMainMenu() {
 }
 
 func (m menuModel) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(textinput.Blink, animTickCmd())
 }
 
 func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case animTickMsg:
+		m.frame++
+		return m, animTickCmd()
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+		m.height = msg.Height
 		m.textInput.Width = m.inputWidth()
 		return m, nil
 
@@ -328,14 +279,11 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.inputMode != "" {
 			switch key {
 			case "ctrl+c":
-				// Raw mode means ^C never raises SIGINT; without this the
-				// only way out of a stuck input is killing the terminal.
 				m.action = actionQuit
 				m.quitting = true
 				return m, tea.Quit
 			case "esc":
 				if m.inputMode == "search" && (len(m.sugg) > 0 || m.sugSel >= 0) {
-					// first esc dismisses pills; second leaves the box
 					m.sugg = nil
 					if m.sugSel >= 0 {
 						m.sugSel = -1
@@ -375,7 +323,6 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-			// Netflix-style pill navigation while suggestions are up.
 			if m.inputMode == "search" && len(m.sugg) > 0 && (key == "down" || key == "up") {
 				if key == "down" {
 					if m.sugSel == -1 {
@@ -388,7 +335,7 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.sugSel--
 					if m.sugSel < 0 {
-						m.sugSel = -1 // stay at free text, don't run past it
+						m.sugSel = -1
 						m.restoreTyped()
 					} else {
 						m.fillFromPill()
@@ -412,7 +359,38 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		// Quick hotkey numbers [1-9]
 		switch key {
+		case "1":
+			m.cursor = 0
+			return m.handleEnterSelection()
+		case "2":
+			m.cursor = 1
+			return m.handleEnterSelection()
+		case "3":
+			m.cursor = 2
+			return m.handleEnterSelection()
+		case "4":
+			m.cursor = 3
+			return m.handleEnterSelection()
+		case "5":
+			m.cursor = 4
+			return m.handleEnterSelection()
+		case "6":
+			m.cursor = 5
+			return m.handleEnterSelection()
+		case "7":
+			m.cursor = 6
+			return m.handleEnterSelection()
+		case "8":
+			m.cursor = 7
+			return m.handleEnterSelection()
+		case "9":
+			m.cursor = 8
+			return m.handleEnterSelection()
+		case "/":
+			m.cursor = 0
+			return m.handleEnterSelection()
 		case "q", "ctrl+c":
 			m.action = actionQuit
 			m.quitting = true
@@ -426,43 +404,48 @@ func (m menuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case "enter":
-			item := menuItems[m.cursor]
-			switch item.action {
-			case actionSearch:
-				m.inputMode = "search"
-				m.textInput.Placeholder = "Enter movie, show, or anime name..."
-				m.textInput.SetValue("")
-				m.textInput.Width = m.inputWidth()
-				m.textInput.Focus()
-				m.sugg = defaultTrending
-				m.sugSel = -1
-				return m, textinput.Blink
-			case actionStream:
-				m.inputMode = "stream"
-				m.textInput.Placeholder = "Paste magnet link or /path/to/file.torrent"
-				m.textInput.SetValue("")
-				m.textInput.Width = m.inputWidth()
-				m.textInput.Focus()
-				return m, textinput.Blink
-			case actionDownload:
-				m.inputMode = "download"
-				m.textInput.Placeholder = "Paste magnet link or /path/to/file.torrent"
-				m.textInput.SetValue("")
-				m.textInput.Width = m.inputWidth()
-				m.textInput.Focus()
-				return m, textinput.Blink
-			case actionZenPlayer, actionWeb, actionBookmarks, actionHistory, actionSettings, actionParty:
-				m.action = item.action
-				m.quitting = true
-				return m, tea.Quit
-			case actionQuit:
-				m.action = actionQuit
-				m.quitting = true
-				return m, tea.Quit
-			}
+			return m.handleEnterSelection()
 		}
 	}
 
+	return m, nil
+}
+
+func (m menuModel) handleEnterSelection() (tea.Model, tea.Cmd) {
+	item := menuItems[m.cursor]
+	switch item.action {
+	case actionSearch:
+		m.inputMode = "search"
+		m.textInput.Placeholder = "Enter movie, show, or anime name..."
+		m.textInput.SetValue("")
+		m.textInput.Width = m.inputWidth()
+		m.textInput.Focus()
+		m.sugg = defaultTrending
+		m.sugSel = -1
+		return m, textinput.Blink
+	case actionStream:
+		m.inputMode = "stream"
+		m.textInput.Placeholder = "Paste magnet link or /path/to/file.torrent"
+		m.textInput.SetValue("")
+		m.textInput.Width = m.inputWidth()
+		m.textInput.Focus()
+		return m, textinput.Blink
+	case actionDownload:
+		m.inputMode = "download"
+		m.textInput.Placeholder = "Paste magnet link or /path/to/file.torrent"
+		m.textInput.SetValue("")
+		m.textInput.Width = m.inputWidth()
+		m.textInput.Focus()
+		return m, textinput.Blink
+	case actionZenPlayer, actionWeb, actionBookmarks, actionHistory, actionSettings, actionParty:
+		m.action = item.action
+		m.quitting = true
+		return m, tea.Quit
+	case actionQuit:
+		m.action = actionQuit
+		m.quitting = true
+		return m, tea.Quit
+	}
 	return m, nil
 }
 
@@ -479,7 +462,7 @@ func (m menuModel) View() string {
 	b.WriteString(banner)
 	b.WriteString("\n")
 	b.WriteString(sub)
-	b.WriteString("\n")
+	b.WriteString("\n\n")
 
 	if m.inputMode != "" {
 		var label string
@@ -499,7 +482,7 @@ func (m menuModel) View() string {
 			if strings.TrimSpace(m.textInput.Value()) == "" {
 				headerTitle = "TRENDING RECOMMENDATIONS:"
 			}
-			b.WriteString("\n  " + lipgloss.NewStyle().Foreground(colorCyan).Bold(true).Render(headerTitle) + "\n")
+			b.WriteString("\n  " + lipgloss.NewStyle().Foreground(colorOrange).Bold(true).Render(headerTitle) + "\n")
 			for i, s := range m.sugg {
 				icon := "🎬"
 				if s.MediaType == "tv" {
@@ -534,7 +517,7 @@ func (m menuModel) View() string {
 				if i == m.sugSel {
 					b.WriteString("  " + lipgloss.NewStyle().
 						Foreground(selectedRowFg).
-						Background(colorPurple).
+						Background(colorOrange).
 						Bold(true).
 						Padding(0, 1).
 						Render("▸ "+rowText) + "\n")
@@ -571,7 +554,8 @@ func (m menuModel) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(footerStyle.Render("  ↑/↓ navigate • enter select • q quit"))
+	b.WriteString(footerStyle.Render("↑/↓ navigate  •  enter select  •  q quit"))
 
 	return menuBoxStyle.Render(b.String())
 }
+
