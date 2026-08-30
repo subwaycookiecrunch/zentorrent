@@ -61,6 +61,7 @@ func PrintUsage() {
 
 	commands := []struct{ cmd, desc string }{
 		{"zentorrent", "Launch interactive TUI menu"},
+		{"zentorrent play <query>", "Instant 4K stream from high-speed Multi-CDN"},
 		{"zentorrent stream <magnet>", "Stream a magnet link with live TUI"},
 		{"zentorrent search <query>", "Search all sources and stream"},
 		{"zentorrent party create <query>", "Host a ZenParty synchronized stream"},

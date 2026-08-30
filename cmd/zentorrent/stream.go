@@ -73,17 +73,20 @@ func streamTorrent(uri string, backups []string, downgrades []string) {
 	// while the regular DHT + tracker exchange runs underneath.
 	go engine.PrimeMetadata(t, uri)
 
-	metaTimer := time.NewTimer(45 * time.Second)
+	metaTimer := time.NewTimer(25 * time.Second)
 	select {
 	case <-t.GotInfo():
 		metaTimer.Stop()
 		go engine.StashMeta(t)
 	case <-metaTimer.C:
 		currentStream.updateStatus("timeout")
-		fmt.Printf("> timed out waiting for peers (45s). torrent may be dead.\n")
-		Notify("ZenTorrent", "Connection timed out — no peers found")
+		fmt.Printf("> timed out waiting for P2P swarm peers (25s).\n")
 		engine.SetActive(nil)
 		engine.Release(t)
+		if FallbackToCloudStream(uri, "") {
+			return
+		}
+		Notify("ZenTorrent", "Connection timed out — no peers found")
 		return
 	}
 

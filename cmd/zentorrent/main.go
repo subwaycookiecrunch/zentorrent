@@ -41,6 +41,14 @@ func main() {
 		StartSearchTUI(query)
 		runShutdown()
 
+	case (arg == "play" || arg == "cloud") && len(os.Args) >= 3:
+		startServicesOrDie(true)
+		query := strings.Join(os.Args[2:], " ")
+		if err := PlayCloudStream(query); err != nil {
+			fmt.Printf("Stream error: %v\n", err)
+		}
+		runShutdown()
+
 	case arg == "music" || arg == "player":
 		query := ""
 		if len(os.Args) >= 3 {
