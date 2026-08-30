@@ -5,62 +5,93 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"time"
+
+	"github.com/subwaycookiecrunch/zentorrent/internal/assets"
 )
 
-// findZenPlayerDir locates the zenplayer directory.
-func findZenPlayerDir() string {
-	// 1. Current working directory ./zenplayer
-	if st, err := os.Stat("zenplayer/zenplayer.py"); err == nil && !st.IsDir() {
-		abs, err := filepath.Abs("zenplayer")
-		if err == nil {
-			return abs
+// findPythonExecutable searches for an available python runtime across platforms.
+func findPythonExecutable(zpDir string) string {
+	// 1. Check virtual environments
+	var venvCandidates []string
+	if runtime.GOOS == "windows" {
+		venvCandidates = []string{
+			filepath.Join(zpDir, "venv", "Scripts", "python.exe"),
+			filepath.Join(zpDir, ".venv", "Scripts", "python.exe"),
+		}
+	} else {
+		venvCandidates = []string{
+			filepath.Join(zpDir, "venv", "bin", "python"),
+			filepath.Join(zpDir, ".venv", "bin", "python"),
 		}
 	}
 
-	// 2. Relative to executable
-	if exe, err := os.Executable(); err == nil {
-		dir := filepath.Join(filepath.Dir(exe), "zenplayer")
-		if st, err := os.Stat(filepath.Join(dir, "zenplayer.py")); err == nil && !st.IsDir() {
-			return dir
+	for _, cand := range venvCandidates {
+		if st, err := os.Stat(cand); err == nil && !st.IsDir() {
+			return cand
 		}
 	}
 
-	// 3. Known fallback locations
-	fallbacks := []string{
-		"/Users/raj/Desktop/zentorrent/zenplayer",
-		"/Users/raj/.gemini/antigravity/scratch/zenplayer",
+	// 2. Check system PATH
+	var sysCandidates []string
+	if runtime.GOOS == "windows" {
+		sysCandidates = []string{"python.exe", "py.exe", "python3.exe", "python"}
+	} else {
+		sysCandidates = []string{"python3", "python"}
 	}
-	for _, fb := range fallbacks {
-		if st, err := os.Stat(filepath.Join(fb, "zenplayer.py")); err == nil && !st.IsDir() {
-			return fb
+
+	for _, name := range sysCandidates {
+		if p, err := exec.LookPath(name); err == nil {
+			return p
 		}
 	}
 
 	return ""
 }
 
-// LaunchZenPlayer launches the ZenPlayer retro cassette music player.
-func LaunchZenPlayer(query string) error {
-	zpDir := findZenPlayerDir()
-	if zpDir == "" {
-		return fmt.Errorf("zenplayer directory not found (expected at ./zenplayer)")
+// openBrowserMusic launches the built-in ZenPlayer Web Audio Studio in the browser.
+func openBrowserMusic(query string) error {
+	startServicesOrDie(true)
+	if err := ensureVODServer(); err != nil {
+		return fmt.Errorf("failed to start streaming engine: %w", err)
 	}
 
-	// Determine python binary
-	pyBin := filepath.Join(zpDir, "venv", "bin", "python")
-	if _, err := os.Stat(pyBin); err != nil {
-		// Try scratch venv if available
-		altPy := "/Users/raj/.gemini/antigravity/scratch/zenplayer/venv/bin/python"
-		if _, err := os.Stat(altPy); err == nil {
-			pyBin = altPy
-		} else {
-			// Fallback to system python3
-			if sysPy, err := exec.LookPath("python3"); err == nil {
-				pyBin = sysPy
-			} else {
-				pyBin = "python"
-			}
-		}
+	url := fmt.Sprintf("http://localhost:%d/?tab=music", appConfig.StreamPort)
+	if query != "" {
+		url += fmt.Sprintf("&q=%s", query)
+	}
+
+	fmt.Println("------------------------------------------------------------")
+	fmt.Println("  🎵 ZenPlayer Music & Audio Studio")
+	fmt.Println("  Launching in browser: " + url)
+	fmt.Println("------------------------------------------------------------")
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	_ = cmd.Start()
+	time.Sleep(1 * time.Second)
+	return nil
+}
+
+// LaunchZenPlayer launches the ZenPlayer retro cassette music player.
+func LaunchZenPlayer(query string) error {
+	zpDir, err := assets.EnsureZenPlayerDir()
+	if err != nil {
+		return openBrowserMusic(query)
+	}
+
+	pyBin := findPythonExecutable(zpDir)
+	if pyBin == "" {
+		// Python not installed on user's machine (e.g. Windows standalone binary user)
+		return openBrowserMusic(query)
 	}
 
 	scriptPath := filepath.Join(zpDir, "zenplayer.py")
@@ -76,10 +107,15 @@ func LaunchZenPlayer(query string) error {
 	cmd.Stderr = os.Stderr
 
 	// Run ZenPlayer with full terminal takeover
-	_ = cmd.Run()
+	if runErr := cmd.Run(); runErr != nil {
+		// If textual/mpv dependencies fail, fallback to browser studio
+		return openBrowserMusic(query)
+	}
 
-	// Ensure terminal screen, cursor, and tty modes are cleanly restored for Bubbletea
-	_ = exec.Command("stty", "sane").Run()
+	// Clean up terminal mode on unix
+	if runtime.GOOS != "windows" {
+		_ = exec.Command("stty", "sane").Run()
+	}
 	fmt.Print("\033[?1049l\033[?25h\033[0m\033[2J\033[H\r")
 
 	return nil
