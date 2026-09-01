@@ -14,7 +14,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	qrcode "github.com/skip2/go-qrcode"
 )
 
 // GenerateSessionToken creates a short random auth token.
@@ -144,34 +143,14 @@ func renderWatchOnlineBanner(tunnelURL, lanURL, localURL, sessionKey string) str
 	}
 
 	if lanURL != "" {
-		content.WriteString(dimStyle.Render("🏠 Home Network (TV / iPad / Phone): ") + lanURL + "\n")
+		content.WriteString(dimStyle.Render("🌐 LAN Address:   ") + lanURL + "\n")
 	}
-	content.WriteString(dimStyle.Render("💻 Local Machine: ") + localURL + "\n\n")
+	content.WriteString(dimStyle.Render("💻 Local Desktop: ") + localURL + "\n\n")
 
-	bestMobileURL := localURL
-	if tunnelURL != "" {
-		bestMobileURL = tunnelURL
-	} else if lanURL != "" {
-		bestMobileURL = lanURL
-	}
-
-	if qrStr := generateASCIIQRCode(bestMobileURL); qrStr != "" {
-		content.WriteString(secStyle.Render("📱 Scan with Mobile (iPhone / Android Camera):") + "\n")
-		content.WriteString(qrStr + "\n")
-	}
-
-	content.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#e4e4e7")).Render("Browser opened. Press ESC to go back.") + "\n\n")
+	content.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("#e4e4e7")).Render("Desktop cinema browser opened. Press ESC to go back.") + "\n\n")
 	content.WriteString(keyNavStyle.Render("  [ESC / Q]") + dimStyle.Render(" Go Back to Menu    ") + keyNavStyle.Render("[CTRL+C]") + dimStyle.Render(" Stop App"))
 
 	return "\n" + bannerBorder.Render(content.String()) + "\n"
-}
-
-func generateASCIIQRCode(targetURL string) string {
-	qr, err := qrcode.New(targetURL, qrcode.Medium)
-	if err != nil {
-		return ""
-	}
-	return qr.ToSmallString(false)
 }
 
 // establishZeroCostTunnel tries cloudflare/ssh tunnel providers.
